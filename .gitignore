@@ -1,0 +1,6 @@
+node_modules
+.idea
+.babelrc
+mikes*
+*.p21
+bower_components
