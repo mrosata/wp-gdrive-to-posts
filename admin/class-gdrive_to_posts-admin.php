@@ -114,13 +114,14 @@ class Gdrive_to_posts_Admin {
 		);
 
 
+
 		$gdrive_template_option_group = 'gdrivePostsSettings';
 		$gdrive_post_posts_section = 'gdrive_to_posts_templates';
 		add_settings_section(
 				$gdrive_post_posts_section,
 				__( 'Define rules for creating new posts', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'template_settings_section_callback'),
-				$gdrive_template_option_group
+				$gdrive_api_option_group
 		);
 
 
@@ -128,7 +129,7 @@ class Gdrive_to_posts_Admin {
 				'create_new_template',
 				__( 'Create New Template: ', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'create_new_template_fields'),
-				$gdrive_template_option_group,
+				$gdrive_api_option_group,
 				$gdrive_post_posts_section
 		);
 
@@ -137,14 +138,14 @@ class Gdrive_to_posts_Admin {
 				'templates',
 				__( 'Post Templates: ', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'templates_fields'),
-				$gdrive_template_option_group,
+				$gdrive_api_option_group,
 				$gdrive_post_posts_section
 		);
 
 
+		//register_setting( $gdrive_template_option_group, 'gdrive_to_posts_sheet_id' );
+		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_templates' );
 		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_settings' );
-		register_setting( $gdrive_template_option_group, 'gdrive_to_posts_sheet_id' );
-		register_setting( $gdrive_template_option_group, 'gdrive_to_posts_templates' );
 
 
 		/*
@@ -226,46 +227,97 @@ class Gdrive_to_posts_Admin {
 	}
 
 
+	public function fetch_sheet_fields() {
+		// For now I think we will only allow new templates to be added using Ajax
+		if (!defined('DOING_AJAX') || !DOING_AJAX || !isset($_POST['sheet_label'])) {
+			$this->end_ajax();
+		}
+		if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
+			$this->end_ajax();
+		}
+
+		$options_sheet_id = get_option('gdrive_to_posts_sheet_id');
+		$sheet_label = filter_var($_POST['sheet_label'], FILTER_SANITIZE_SPECIAL_CHARS);
+		if (!is_string(($sheet_id = $options_sheet_id[$sheet_label]))) {
+			$this->end_ajax();
+		}
+		// Need the google drive connection.
+		gdrive_connection_init();
+
+		if (is_object($this->google_client)) {
+			$file = $this->google_client->files->get($sheet_id);
+			if ($file && is_array($file->exportLinks)) {
+
+				// Get the file as text csv using the Google Drive Export method.
+
+				$csv = wp_remote_get($file->exportLinks['text/csv']);
+				@$csv = is_array($csv) ? $csv['body'] : null;
+				if (!$csv) {
+					$this->end_ajax(array('success'=>0, 'error'=>"Couldn't find Google Sheet with ID: {$sheet_id}."));
+				}
+				// This will parse the csv and make new posts if that's what it should do.
+				$workhorse = new GDrive_To_Posts_Workhorse();
+				$workhorse->add($csv);
+				// We want to see the output here.
+				if ($fields = $workhorse->get_fields()) {
+					$this->end_ajax(array('success'=>1, 'fields'=>$fields));
+				} else {
+					$this->end_ajax(array('success'=>0, 'error'=>'Connected OK, Found the Sheet, No Fields.'));
+				}
+
+			}
+		}
+		else {
+			$this->end_ajax(array('success'=>0, 'error'=>"Couldn't connect to GDrive with your credentials."));
+		}
+
+		$this->end_ajax();
+	}
+
+
 
 	public function add_new_template() {
 		// For now I think we will only allow new templates to be added using Ajax
-		if (defined('DOING_AJAX') && DOING_AJAX && isset($_POST['new_sheet_id']) && isset($_POST['new_template_label'])) {
-			if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
-				$this->end_ajax();
-			}
-
-			// The file id is Google Sheet file id and becomes options[n][file_id] = $file_id
-			$new_file_id = filter_var($_POST['new_sheet_id']);
-			// The file key is just a key to use as a label becomes options[n][label] = $template_label
-			$template_label = filter_var($_POST['new_template_label'], FILTER_SANITIZE_SPECIAL_CHARS);
-			$template_label = str_replace(' ', '-', $template_label);
-
-			if (!!$new_file_id && !!$template_label) {
-				$options_template = get_option('gdrive_to_posts_templates', array());
-				$options_sheet_id = get_option('gdrive_to_posts_sheet_id', array());
-
-				// Make sure that the label is unique in our options
-				if (isset($options_template[$template_label]) || isset($options_sheet_id[$template_label])) {
-					$this->end_ajax(array(
-							'success' => 0,
-							'error' =>"GDrive to Posts - Can't use `{$template_label}` label twice!"
-					));
-				}
-
-				// Set the new label up with a template
-				$options_template[$template_label] = 'nbsp;';
-				$options_sheet_id[$template_label] = $new_file_id;
-				update_option('gdrive_to_posts_templates', $options_template);
-				update_option('gdrive_to_posts_sheet_id', $options_sheet_id);
-
-				$response = array(
-						'success' => 1,
-						'html' => "<option value='{$template_label}'>{$template_label}</option>",
-						'hiddenHTML' => "<input value='' name='gdrive_to_posts_templates[{$template_label}]' type='hidden'>"
-				);
-				$this->end_ajax($response);
-			}
+		if (!defined('DOING_AJAX') || !DOING_AJAX || !isset($_POST['new_sheet_id']) || !isset($_POST['new_template_label'])) {
+			$this->end_ajax();
 		}
+		if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
+			$this->end_ajax();
+		}
+
+		// The file id is Google Sheet file id and becomes options[n][file_id] = $file_id
+		$new_file_id = filter_var($_POST['new_sheet_id'], FILTER_SANITIZE_SPECIAL_CHARS);
+		// The file key is just a key to use as a label becomes options[n][label] = $template_label
+		$template_label = filter_var($_POST['new_template_label'], FILTER_SANITIZE_SPECIAL_CHARS);
+		$template_label = str_replace(' ', '-', $template_label);
+
+		if (!!$new_file_id && !!$template_label) {
+			$options_template = get_option('gdrive_to_posts_templates');
+			$options_sheet_id = get_option('gdrive_to_posts_sheet_id', array());
+
+			// Make sure that the label is unique in our options
+			if (isset($options_template[$template_label]) || isset($options_sheet_id[$template_label])) {
+				$this->end_ajax(array(
+						'success' => 0,
+						'error' =>"GDrive to Posts - Can't use `{$template_label}` label twice!"
+				));
+			}
+
+			// Set the new label up with a template
+			$options_template[$template_label] = 'nbsp;';
+			$options_sheet_id[$template_label] = $new_file_id;
+			update_option('gdrive_to_posts_templates', $options_template);
+			update_option('gdrive_to_posts_sheet_id', $options_sheet_id);
+
+			$response = array(
+					'success' => 1,
+					'html' => "<option value='{$template_label}'>{$template_label}</option>",
+					'hiddenHTML' => "<input value='' name='gdrive_to_posts_templates[{$template_label}]' id='gdrive_to_posts_templates[{$template_label}]' type='hidden'>"
+			);
+
+			$this->end_ajax($response);
+		}
+
 		$this->end_ajax();
 	}
 

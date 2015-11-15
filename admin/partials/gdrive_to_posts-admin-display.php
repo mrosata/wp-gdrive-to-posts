@@ -80,7 +80,7 @@ class GDrive_To_Posts_Settings {
 
         ?>
 
-        <input type='text' name='gdrive_to_posts_settings[google_api_key]' value='<?php echo $options['google_api_key']; ?>'>
+        <input type='text' id='gdrive_to_posts_settings[google_api_key]' name='gdrive_to_posts_settings[google_api_key]' value='<?php echo $options['google_api_key']; ?>'>
 
         <?php
 
@@ -109,14 +109,14 @@ class GDrive_To_Posts_Settings {
 
         $options = get_option( 'gdrive_to_posts_settings' );
 
-        if (!isset($options['service_account_certificate_fingerprints'])) {
-            $options['service_account_certificate_fingerprints'] = '';
+        if (!isset($options['service_certificate_fingerprints'])) {
+            $options['service_certificate_fingerprints'] = '';
             update_option('gdrive_to_posts_settings', $options);
         }
 
         ?>
 
-        <input type='text' name='gdrive_to_posts_settings[service_account_certificate_fingerprints]' value='<?php echo $options['service_account_certificate_fingerprints']; ?>'>
+        <input type='text' name='gdrive_to_posts_settings[service_certificate_fingerprints]' value='<?php echo $options['service_certificate_fingerprints']; ?>'>
 
         <?php
 
@@ -132,11 +132,11 @@ class GDrive_To_Posts_Settings {
         }
         ?>
         <select name='gdrive_to_posts_settings[gdrive_to_posts_select_field_1]'>
-            <option value='' <?php selected( $options['gdrive_to_posts_interval'], 0 ); ?>>Constant</option>
-            <option value='1' <?php selected( $options['gdrive_to_posts_interval'], 1 ); ?>>Every 1 hour</option>
-            <option value='2' <?php selected( $options['gdrive_to_posts_interval'], 1 ); ?>>Every 2 hours</option>
-            <option value='6' <?php selected( $options['gdrive_to_posts_interval'], 2 ); ?>>Every 6 Hours</option>
-            <option value='12' <?php selected( $options['gdrive_to_posts_interval'], 2 ); ?>>Every 12 Hours</option>
+            <option value='' <?php selected( $options['gdrive_to_posts_interval']); ?>>Constant</option>
+            <option value='1' <?php selected( $options['gdrive_to_posts_interval'] ); ?>>Every 1 hour</option>
+            <option value='2' <?php selected( $options['gdrive_to_posts_interval']); ?>>Every 2 hours</option>
+            <option value='6' <?php selected( $options['gdrive_to_posts_interval']); ?>>Every 6 Hours</option>
+            <option value='12' <?php selected( $options['gdrive_to_posts_interval'] ); ?>>Every 12 Hours</option>
         </select>
         <?php
 
@@ -206,15 +206,19 @@ class GDrive_To_Posts_Settings {
      */
     function templates_fields( ) {
 
-        $templates = get_option( 'gdrive_to_posts_templates', array() );
+        $options = get_option( 'gdrive_to_posts_templates');
 
+        if (!is_array($options)) {
+            $options = array();
+            update_option('gdrive_to_posts_templates', $options);
+        }
 
         ?><div id="gdrive-to-posts-templates"><?php
 
         $hidden_inputs = '';
         $chose_template = __('Choose a template', 'gdrive_to_posts');
         echo "<label>Select a template<select name='choose-editor-template'>\n\t<option value='' selected>{$chose_template}</option>\n";
-        foreach ($templates as $key => $template) {
+        foreach ($options as $key => $template) {
             if (!is_string($template)) {
                 continue;
             }
@@ -223,7 +227,7 @@ class GDrive_To_Posts_Settings {
 
             $hidden_inputs .= "<input type='hidden' id='gdrive_to_posts_templates[{$key}]' name='gdrive_to_posts_templates[{$key}]' value='{$template}'>";
         }
-        echo "</select></label></div>";
+        echo "</select></label><button class='button button-primary' type='button' id='get-gdrive-sheet-field-names'>Fetch Field Names</button></div>";
 
         // These hidden inputs hold the values of each template so we can pull their value into the mce editor if the user wants
         // to edit the template body and then when the 'save changes' button is pushed they will all update.
@@ -232,7 +236,7 @@ class GDrive_To_Posts_Settings {
         $editor_id = "gdrive_to_posts_templates-editor";
         wp_editor('<h1>GDrive to Posts v0.1.0</h1><ul><li>Create a new template by entering a label and Sheets file ID in the boxes above</li>'
                   . '<li>If you\'ve already created some templates you may switch between them using the dropdown above me!</li></ul>'
-                  , $editor_id, array('textarea_name'=> '') );
+                  , $editor_id, array('textarea_name'=> ' ') );
         echo "</table>";
 
 
@@ -262,8 +266,8 @@ class GDrive_To_Posts_Settings {
                         ?>
                         <hr>
                         <?php
-                        settings_fields( 'gdrivePostsSettings' );
-                        do_settings_sections( 'gdrivePostsSettings' );
+                        //settings_fields( 'gdrivePostsSettings' );
+                        //do_settings_sections( 'gdrivePostsSettings' );
                         submit_button();
                         ?>
                     </table>

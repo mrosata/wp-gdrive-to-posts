@@ -38,6 +38,22 @@ class GDrive_To_Posts_Workhorse
     }
 
 
+    /**
+     * @return array - fields that can be used as variables
+     */
+    public function get_fields() {
+        $csv_text = $this->csv_text;
+
+        $csv_rows = str_getcsv($csv_text, "\r", '"');
+        if (!is_array($csv_rows)) {
+            return false;
+        }
+
+        $keys = str_getcsv( (array_shift($csv_rows)), ',', '"');
+        return $keys;
+    }
+
+
     public function run($show_output = false) {
         $csv_text = $this->csv_text;
 

@@ -32,18 +32,50 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
       _classCallCheck(this, TemplateAjaxClass);
 
       $(window).on('load', function () {
+        _this.setupFetchFieldsButton();
         _this.setupBtn();
         _this.templateSelect();
       });
     }
 
-    /**
-     * Create CSS for a modal to show messages on the form.
-     * @param message
-     * @param type
-     */
-
     _createClass(TemplateAjaxClass, [{
+      key: 'setupFetchFieldsButton',
+      value: function setupFetchFieldsButton() {
+        var fetchFieldsBtn = $('#get-gdrive-sheet-field-names');
+        if (fetchFieldsBtn.length) {
+          fetchFieldsBtn.on('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var sheetID = fetchFieldsBtn.data('sheet-label');
+            var data = {
+              action: 'gdrive_to_posts_fetch_sheet_fields',
+              nonce: gdriveToPosts.nonce,
+              sheet_label: sheetID
+            };
+            $.ajax({
+              url: gdriveToPosts.ajaxURL,
+              type: 'post',
+              dataType: 'json',
+              data: data,
+              success: function success(resp) {
+                if (!resp || resp.success != 1) {
+                  return false;
+                }
+                // Basically we should just be getting back a list of fields
+                console.log(resp.fields);
+              }
+            });
+          });
+        }
+      }
+
+      /**
+       * Create CSS for a modal to show messages on the form.
+       * @param message
+       * @param type
+       */
+
+    }, {
       key: 'displayModal',
       value: function displayModal(message) {
         var type = arguments.length <= 1 || arguments[1] === undefined ? 'success' : arguments[1];
@@ -67,7 +99,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
       key: 'templateSelect',
       value: function templateSelect() {
         var $selectBox = $('select[name="choose-editor-template"]'),
-            templateOptionLabel = 'gdrive_to_posts_templates';
+            templateOptionLabel = 'gdrive_to_posts_templates',
+            fetchFieldsBtn = $('#get-gdrive-sheet-field-names');
 
         $selectBox.on('change', function (evt) {
           var selectedOption = $(this).val(),
@@ -85,9 +118,12 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           if (!selectedOption) {
             hideLastActiveTemplate();
             updateTextEditor('');
+            fetchFieldsBtn.data('sheet-label', '').hide();
             console.log('changing content in the editor to nothing.');
             return false;
           }
+          // We only want to see this button when there is a file id to show.
+          fetchFieldsBtn.data('sheet-label', selectedOption).show();
 
           desiredTemplate.name = templateOptionLabel + '[' + selectedOption + ']';
           desiredTemplate.$ = hiddenTemplateFields.find('input[name="' + desiredTemplate.name + '"]');
@@ -116,7 +152,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           function updateTextEditor() {
             var val = arguments.length <= 0 || arguments[0] === undefined ? '' : arguments[0];
 
-            if (tinyMCE.get(templateOptionLabel + '-editor') !== null) {
+            if (typeof tinyMCE !== "undefined" && tinyMCE.get(templateOptionLabel + '-editor') !== null) {
               tinyMCE.get(templateOptionLabel + '-editor').setContent(val, { format: 'raw' });
             } else {
               editor.$.empty().val(val);
@@ -124,7 +160,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           }
 
           function getTextEditorContent() {
-            if (tinyMCE.get(templateOptionLabel + '-editor') !== null) {
+            if (!!tinyMCE && tinyMCE.get(templateOptionLabel + '-editor') !== null) {
               return firstDefined(tinyMCE.get(templateOptionLabel + '-editor').getContent(), '');
             } else {
               return firstDefined(editor.$.val(), '');

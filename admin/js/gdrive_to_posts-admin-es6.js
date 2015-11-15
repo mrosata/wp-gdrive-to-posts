@@ -21,9 +21,39 @@
   class TemplateAjaxClass {
     constructor() {
       $(window).on('load', ()=>{
+        this.setupFetchFieldsButton();
         this.setupBtn();
         this.templateSelect();
       });
+    }
+
+    setupFetchFieldsButton() {
+      var fetchFieldsBtn = $('#get-gdrive-sheet-field-names');
+      if (fetchFieldsBtn.length) {
+        fetchFieldsBtn.on('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var sheetID = fetchFieldsBtn.data('sheet-label');
+          var data = {
+            action: 'gdrive_to_posts_fetch_sheet_fields',
+            nonce: gdriveToPosts.nonce,
+            sheet_label: sheetID
+          };
+          $.ajax({
+            url: gdriveToPosts.ajaxURL,
+            type: 'post',
+            dataType: 'json',
+            data: data,
+            success (resp) {
+              if (!resp || resp.success != 1) {
+                return false;
+              }
+              // Basically we should just be getting back a list of fields
+              console.log(resp.fields);
+            }
+          });
+        });
+      }
     }
 
 
@@ -49,10 +79,10 @@
       });
     }
 
-
     templateSelect () {
       var $selectBox = $('select[name="choose-editor-template"]'),
-          templateOptionLabel = 'gdrive_to_posts_templates';
+          templateOptionLabel = 'gdrive_to_posts_templates',
+          fetchFieldsBtn = $('#get-gdrive-sheet-field-names');
 
       $selectBox.on('change', function (evt) {
         var selectedOption = $(this).val(),
@@ -70,9 +100,13 @@
         if (!selectedOption) {
           hideLastActiveTemplate();
           updateTextEditor('');
+          fetchFieldsBtn.data('sheet-label', '').hide();
           console.log('changing content in the editor to nothing.');
           return false;
         }
+        // We only want to see this button when there is a file id to show.
+        fetchFieldsBtn.data('sheet-label', selectedOption).show();
+
 
         desiredTemplate.name = `${templateOptionLabel}[${selectedOption}]`;
         desiredTemplate.$ = hiddenTemplateFields.find(`input[name="${desiredTemplate.name}"]`);
@@ -100,7 +134,7 @@
          * @param val
          */
         function updateTextEditor(val = '') {
-          if (tinyMCE.get(`${templateOptionLabel}-editor`) !== null) {
+          if (typeof tinyMCE !== "undefined" && tinyMCE.get(`${templateOptionLabel}-editor`) !== null) {
             tinyMCE.get(`${templateOptionLabel}-editor`).setContent(val, {format : 'raw'});
           } else {
             editor.$.empty().val(val);
@@ -108,7 +142,7 @@
         }
 
         function getTextEditorContent() {
-          if (tinyMCE.get(`${templateOptionLabel}-editor`) !== null) {
+          if (!!tinyMCE && tinyMCE.get(`${templateOptionLabel}-editor`) !== null) {
             return firstDefined(tinyMCE.get(`${templateOptionLabel}-editor`).getContent(), '');
           } else {
             return firstDefined(editor.$.val(), '');
