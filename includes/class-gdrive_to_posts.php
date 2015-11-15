@@ -175,7 +175,6 @@ class Gdrive_to_posts {
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'settings_init' );
 
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_add_new_template', $plugin_admin, 'add_new_template' );
-		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_get_template', $plugin_admin, 'get_template' );
 	}
 
 	/**

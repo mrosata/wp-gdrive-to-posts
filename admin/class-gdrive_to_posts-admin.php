@@ -72,23 +72,13 @@ class Gdrive_to_posts_Admin {
 	 */
 	public function settings_init() {
 		$gdrive_api_option_group = 'gdriveAPISettings';
-		$gdrive_post_option_group = 'drivePostsSetting';
-
 		$gdrive_post_api_section = 'gdrive_to_posts_settings';
-		$gdrive_post_posts_section = 'gdrive_to_posts_post_templates';
 
 		add_settings_section(
 				$gdrive_post_api_section,
 				__( 'Setup GDrive App Settings', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'google_settings_section_callback'),
 				$gdrive_api_option_group
-		);
-
-		add_settings_section(
-				$gdrive_post_posts_section,
-				__( 'Define rules for creating new posts', 'gdrive_to_posts' ),
-				array( $this->settings_page, 'posts_settings_section_callback'),
-				$gdrive_post_option_group
 		);
 
 		add_settings_field(
@@ -124,26 +114,37 @@ class Gdrive_to_posts_Admin {
 		);
 
 
+		$gdrive_template_option_group = 'gdrivePostsSettings';
+		$gdrive_post_posts_section = 'gdrive_to_posts_templates';
+		add_settings_section(
+				$gdrive_post_posts_section,
+				__( 'Define rules for creating new posts', 'gdrive_to_posts' ),
+				array( $this->settings_page, 'template_settings_section_callback'),
+				$gdrive_template_option_group
+		);
+
+
 		add_settings_field(
 				'create_new_template',
 				__( 'Create New Template: ', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'create_new_template_fields'),
-				$gdrive_post_option_group,
+				$gdrive_template_option_group,
 				$gdrive_post_posts_section
 		);
 
 
 		add_settings_field(
-				'gdrive_posts_definitions',
+				'templates',
 				__( 'Post Templates: ', 'gdrive_to_posts' ),
-				array( $this->settings_page, 'gdrive_posts_definitions_fields'),
-				$gdrive_post_option_group,
+				array( $this->settings_page, 'templates_fields'),
+				$gdrive_template_option_group,
 				$gdrive_post_posts_section
 		);
 
 
 		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_settings' );
-		register_setting( $gdrive_post_option_group, 'gdrive_to_posts_settings' );
+		register_setting( $gdrive_template_option_group, 'gdrive_to_posts_sheet_id' );
+		register_setting( $gdrive_template_option_group, 'gdrive_to_posts_templates' );
 
 
 		/*
@@ -211,69 +212,61 @@ class Gdrive_to_posts_Admin {
 		 */
 
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/gdrive_to_posts-admin.js', array( 'jquery' ), $this->version, false );
-        wp_localize_script($this->plugin_name, 'gdriveToPosts', array(
-            'nonce' => wp_create_nonce('gdrive_to_posts_add-new-template'),
-            'ajaxURL' => admin_url( 'admin-ajax.php' )
-        ));
+		wp_localize_script($this->plugin_name, 'gdriveToPosts', array(
+				'nonce' => wp_create_nonce('gdrive_to_posts_add-new-template'),
+				'ajaxURL' => admin_url( 'admin-ajax.php' )
+		));
 
 	}
 
-    public function end_ajax($resp = array('success'=>0)) {
-        ob_flush();
-        echo json_encode($resp);
-        wp_die();
-    }
+	public function end_ajax($resp = array('success'=>0)) {
+		ob_flush();
+		echo json_encode($resp);
+		wp_die();
+	}
 
-
-    public function get_template() {
-        if (defined('DOING_AJAX') && DOING_AJAX && isset($_POST['template_index'])) {
-            if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
-                $this->end_ajax();
-            }
-            $template_index = intval($_POST['template_index']);
-            $options = $options = get_option('gdrive_to_posts_post_templates');
-            if (is_array($options) && isset($options[$template_index])) {
-                $response = array(
-                    'success' => 1,
-                    'template' => $options[$template_index]
-                );
-                $this->end_ajax($response);
-            }
-        }
-        $this->end_ajax();
-    }
 
 
 	public function add_new_template() {
-        // For now I think we will only allow new templates to be added using Ajax
-        if (defined('DOING_AJAX') && DOING_AJAX && isset($_POST['new_file_id']) && isset($_POST['template_label'])) {
-            if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
-                $this->end_ajax();
-            }
+		// For now I think we will only allow new templates to be added using Ajax
+		if (defined('DOING_AJAX') && DOING_AJAX && isset($_POST['new_sheet_id']) && isset($_POST['new_template_label'])) {
+			if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
+				$this->end_ajax();
+			}
 
-            // The file id is Google Sheet file id and becomes options[n][file_id] = $file_id
-            $new_file_id = filter_var($_POST['new_file_id']);
-            // The file key is just a key to use as a label becomes options[n][label] = $template_label
-            $template_label = filter_var($_POST['template_label']);
+			// The file id is Google Sheet file id and becomes options[n][file_id] = $file_id
+			$new_file_id = filter_var($_POST['new_sheet_id']);
+			// The file key is just a key to use as a label becomes options[n][label] = $template_label
+			$template_label = filter_var($_POST['new_template_label'], FILTER_SANITIZE_SPECIAL_CHARS);
+			$template_label = str_replace(' ', '-', $template_label);
 
-            if ($new_file_id) {
-                $options = get_option('gdrive_to_posts_post_templates', array());
+			if (!!$new_file_id && !!$template_label) {
+				$options_template = get_option('gdrive_to_posts_templates', array());
+				$options_sheet_id = get_option('gdrive_to_posts_sheet_id', array());
 
-                $options[] = array(
-                    'label' => $template_label,
-                    'sheet_id' => $new_file_id,
-                    'template' => ''
-                );
-                update_option('gdrive_to_posts_post_templates', $options);
+				// Make sure that the label is unique in our options
+				if (isset($options_template[$template_label]) || isset($options_sheet_id[$template_label])) {
+					$this->end_ajax(array(
+							'success' => 0,
+							'error' =>"GDrive to Posts - Can't use `{$template_label}` label twice!"
+					));
+				}
 
-                $response = array(
-                    'success' => 1,
-                    'html' => "<h2>{$template_label}</h2><input type='text' value='{$new_file_id}' name='gdrive_to_posts_post_templates[][sheet_id]'>"
-                );
-                $this->end_ajax($response);
-            }
+				// Set the new label up with a template
+				$options_template[$template_label] = 'nbsp;';
+				$options_sheet_id[$template_label] = $new_file_id;
+				update_option('gdrive_to_posts_templates', $options_template);
+				update_option('gdrive_to_posts_sheet_id', $options_sheet_id);
+
+				$response = array(
+						'success' => 1,
+						'html' => "<option value='{$template_label}'>{$template_label}</option>",
+						'hiddenHTML' => "<input value='' name='gdrive_to_posts_templates[{$template_label}]' type='hidden'>"
+				);
+				$this->end_ajax($response);
+			}
 		}
-        $this->end_ajax();
+		$this->end_ajax();
 	}
 
 
@@ -287,37 +280,46 @@ class Gdrive_to_posts_Admin {
 	public function gdrive_connection_init() {
 
 		$options = get_option( 'gdrive_to_posts_settings' );
+		if (!is_array($options)) {
+			// options are not set up, lets bounce!
+			return false;
+		}
+		try {
 
-		if (!$this->google_client) {
-			$client_email = $options['service_account_email_address'];
+			if (!$this->google_client) {
+				$client_email = $options['service_account_email_address'];
 
-			$private_key = file_get_contents(plugin_dir_path( dirname( __FILE__ ) ) . 'mikes map-fc28531dc547.p12');
-			$scopes = array(
-					'https://www.googleapis.com/auth/sqlservice.admin',
-					'https://www.googleapis.com/auth/drive.readonly',
-					'https://www.googleapis.com/auth/drive.photos.readonly',
-					'https://www.googleapis.com/auth/drive.metadata.readonly',
-					'https://www.googleapis.com/auth/drive.metadata',
-					'https://www.googleapis.com/auth/drive.file'
-			);
+				$private_key = file_get_contents(plugin_dir_path( dirname( __FILE__ ) ) . 'mikes map-fc28531dc547.p12');
+				$scopes = array(
+						'https://www.googleapis.com/auth/sqlservice.admin',
+						'https://www.googleapis.com/auth/drive.readonly',
+						'https://www.googleapis.com/auth/drive.photos.readonly',
+						'https://www.googleapis.com/auth/drive.metadata.readonly',
+						'https://www.googleapis.com/auth/drive.metadata',
+						'https://www.googleapis.com/auth/drive.file'
+				);
 
-			$credentials = new \Google_Auth_AssertionCredentials(
-					$client_email,
-					$scopes,
-					$private_key
-			);
-			//notasecret
-			$client = new \Google_Client();
-			$client->setAssertionCredentials($credentials);
-			if ($client->getAuth()->isAccessTokenExpired()) {
-				$client->getAuth()->refreshTokenWithAssertion();
+				$credentials = new \Google_Auth_AssertionCredentials(
+						$client_email,
+						$scopes,
+						$private_key
+				);
+				//notasecret
+				$client = new \Google_Client();
+				$client->setAssertionCredentials($credentials);
+				if ($client->getAuth()->isAccessTokenExpired()) {
+					$client->getAuth()->refreshTokenWithAssertion();
+				}
+
+
+				$this->google_client = $client;
 			}
 
-
-			$this->google_client = $client;
+			return $this->google_client;
+		} catch (\Google_Auth_Exception $e) {
+			// The Google Auth didn't go through
 		}
-
-		return $this->google_client;
+		return false;
 	}
 }
 

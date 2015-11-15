@@ -8,6 +8,7 @@
  * Project: wp-dev
  */
 
+
 (function( $ ) {
   'use strict';
 
@@ -18,7 +19,7 @@
    * TemplateAjaxClass
    */
   class TemplateAjaxClass {
-    constructor($) {
+    constructor() {
       $(window).on('load', ()=>{
         this.setupBtn();
         this.templateSelect();
@@ -50,33 +51,88 @@
 
 
     templateSelect () {
-      var $selectBox = $('select[name="gdrive_to_posts_post_templates-template"]');
-      $selectBox.on('click', function (evt) {
-        let val = $(this).val();
-        if (!val) {
-          return false;}
-        var data = {
-          nonce: gdriveToPosts.nonce,
-          template_index: val,
-          action: 'gdrive_to_posts_get_template'
-        };
-        let theNewName = `gdrive_to_posts_post_templates[${val}][template]`;
+      var $selectBox = $('select[name="choose-editor-template"]'),
+          templateOptionLabel = 'gdrive_to_posts_templates';
 
-        $.ajax({
-          url: gdriveToPosts.ajaxURL,
-          type: 'post',
-          data: data,
-          success: (resp) => {
-            if (resp && resp.success == 1) {
-              $('#gdrive_to_posts_post_templates-template')
-                .prop('name', theNewName);
-              // This is the returned index for the text editor.
-              console.log('resp.template', resp.template);
+      $selectBox.on('change', function (evt) {
+        var selectedOption = $(this).val(),
+          editor = {$: $(`#${templateOptionLabel}-editor`)},
+          hiddenTemplateFields = $('#gdrive-hidden-templates'),
+          desiredTemplate = {};
+
+        if (!editor.$.length || !hiddenTemplateFields.length) {return false;}
+        // We need the name of editor to be able to change it out.
+        editor.name = editor.$.prop('name');
+        editor.content = editor.$.val();
+
+
+
+        if (!selectedOption) {
+          hideLastActiveTemplate();
+          updateTextEditor('');
+          console.log('changing content in the editor to nothing.');
+          return false;
+        }
+
+        desiredTemplate.name = `${templateOptionLabel}[${selectedOption}]`;
+        desiredTemplate.$ = hiddenTemplateFields.find(`input[name="${desiredTemplate.name}"]`);
+        console.log('found desired template', desiredTemplate.name);
+        desiredTemplate.content = desiredTemplate.$.length? desiredTemplate.$.val() : '';
+
+        // We need to make sure that the content from the current editor is hidden away correctly so that the
+        // user can change back to it and also so that when the form is submitted it changes properly.
+        hideLastActiveTemplate();
+        if (desiredTemplate.$.length) {
+          //desiredTemplate.$.remove();
+          // now that the content from the editor has been saved to a hidden input, we can
+          updateTextEditor(desiredTemplate.content);
+        }
+        else {
+          if (!!window.gdriveToPosts._gdriveErrorsOn) {
+            throw new Error("There is no template field with that name!");
+          }
+        }
+        editor.$.prop('name', desiredTemplate.name);
+        editor.$.attr('name', desiredTemplate.name);
+        updateTextEditor(desiredTemplate.content);
+        /**
+         * Utility function to set content of editor
+         * @param val
+         */
+        function updateTextEditor(val = '') {
+          if (tinyMCE.get(`${templateOptionLabel}-editor`) !== null) {
+            tinyMCE.get(`${templateOptionLabel}-editor`).setContent(val, {format : 'raw'});
+          } else {
+            editor.$.empty().val(val);
+          }
+        }
+
+        function getTextEditorContent() {
+          if (tinyMCE.get(`${templateOptionLabel}-editor`) !== null) {
+            return firstDefined(tinyMCE.get(`${templateOptionLabel}-editor`).getContent(), '');
+          } else {
+            return firstDefined(editor.$.val(), '');
+          }
+        }
+
+
+        /**
+         * Utility for this method. Swaps content f
+         */
+        function hideLastActiveTemplate() {
+          if (editor.name != '') {
+            editor.content = firstDefined( getTextEditorContent() );
+            console.log('editor has name %s and value %s.', editor.name, editor.content);
+
+            if (hiddenTemplateFields.find(`input[name="${editor.name}"]`).length) {
+              hiddenTemplateFields.find(`input[name="${editor.name}"]`).val(editor.content);
+            } else {
+              hiddenTemplateFields.append(`<input name="${editor.name}" value="${editor.content}" type="hidden">`);
             }
           }
-        });
+        }
 
-      });
+      });  // End selectbox.on('change');
 
     }
 
@@ -86,9 +142,9 @@
 
       if ($addNewButton.length) {
         $addNewButton.on('click', (evt) => {
-          let fileID = $('input[name="gdrive-to-posts-new-file-id"]').val(),
-              tempLabel = $('input[name="gdrive-to-posts-template-label"]').val();
-          if (!fileID || !tempLabel) {
+          let fileID = $('input[name="gdrive-to-posts-template-sheet-id"]').val(),
+            tempLabel = $('input[name="gdrive-to-posts-template-label"]').val();
+          if (!fileID  || !tempLabel) {
             this.displayModal('Enter a Google Sheets File ID and Template Label please!', 'error');
             return false;
           }
@@ -98,8 +154,8 @@
           // Create the data needed for WP ajax action
           var data = {
             nonce: gdriveToPosts.nonce,
-            new_file_id: fileID,
-            template_label: tempLabel,
+            new_sheet_id: fileID,
+            new_template_label: tempLabel,
             action: 'gdrive_to_posts_add_new_template'
           };
 
@@ -107,14 +163,25 @@
           $.ajax({
             url: gdriveToPosts.ajaxURL,
             type: 'post',
+            dataType: 'json',
             data: data,
-            success: (resp) => {
-              if (resp && resp.success == 1) {
-                $('#gdrive-to-posts-templates').insertBefore($(resp.html), $addNewButton);
+            success: function (resp) {
+              if (resp && resp.success == 1 && resp.html && resp.hiddenHTML) {
+                var templateDropdown = $('select[name="choose-editor-template"]'),
+                    templateHiddenInputs = $('#gdrive-hidden-templates');
+                if (templateDropdown.length && !!resp.html) {
+                  templateDropdown.append(resp.html);
+                }
+                if (templateHiddenInputs.length && !!resp.hiddenHTML) {
+                  templateHiddenInputs.append(resp.hiddenHTML);
+                }
               }
             },
-            done: () => {
-              // Enable the button again
+            complete: (error) => {
+              if (!!window.gdriveToPosts._gdriveErrorsOn) {
+                throw new Error(error);
+              }
+              // Enable the button again regardless of how ajax response comes back.
               $addNewButton.prop('disabled', 0);
             }
           });
@@ -123,6 +190,24 @@
     }
   }
 
-  var newTemplate = new TemplateAjaxClass($);
+  var newTemplate = new TemplateAjaxClass();
 
 })( jQuery );
+
+
+
+
+
+/**
+ * Return the first argument that isn't null or undefined
+ * @param vals
+ * @returns {*}
+ */
+function firstDefined(...vals) {
+  "use strict";
+  for (let val of vals) {
+    if (typeof val !== "undefined" && !Object.is(val, null)) {
+      return val;
+    }
+  }
+}

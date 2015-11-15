@@ -55,7 +55,7 @@ class GDrive_To_Posts_Settings {
     }
 
 
-    function posts_settings_section_callback() {
+    function template_settings_section_callback() {
 
         echo __( 'In this section you should tell the plugin how to convert the rows in your Google Sheet file into a post.'
             . ' When trying to find the ID of a Google Sheet file remember that the id can be found in the URL between a '
@@ -145,7 +145,7 @@ class GDrive_To_Posts_Settings {
 
 
     function post_body_template_textarea( $id ) {
-        $options = get_option( 'gdrive_to_posts_post_templates' );
+        $options = get_option( 'gdrive_to_posts_templates' );
         if (!is_array($options)) {
             // There is no way this should be called if the base level settings haven't even been created!
             return false;
@@ -166,22 +166,20 @@ class GDrive_To_Posts_Settings {
         echo "<h2 id='gdrive-to-posts-template-label'>{$gdrive_template['label']}</h2>";
         ?>
 
-        <input type='text' name='gdrive_to_posts_post_templates[<?php echo $id ?>][sheet_id]' value='<?php echo $gdrive_template['sheet_id']; ?>'>
+        <input type='text' name='gdrive_to_posts_templates[<?php echo $id ?>][sheet_id]' value='<?php echo $gdrive_template['sheet_id']; ?>'>
         <td style="width:15%"></td>
         <?php
     }
 
 
     function create_new_template_fields( ) {
-        // ADD NEW TEMPLATE BUTTON
-        wp_nonce_field( 'gdrive_to_posts_add-new-template' );
         ?>
 
         <div class="form-group">
 
             <label for="gdrive-to-posts-new-file-id">
                 <?php _e(' Google Sheets file ID: ', 'gdrive_to_posts') ?></label>
-            <input type="text" name="gdrive-to-posts-new-file-id" value="" class="form-control" placeholder="Google Sheets File ID">
+            <input type="text" name="gdrive-to-posts-template-sheet-id" value="" class="form-control" placeholder="Google Sheets File ID">
 
             <br>
         </div>
@@ -206,37 +204,44 @@ class GDrive_To_Posts_Settings {
      * well as a template so they take up 2 fields and will be looped for how ever many types of
      * posts the user sets up.
      */
-    function gdrive_posts_definitions_fields( ) {
+    function templates_fields( ) {
 
-        $content = '';
+        $templates = get_option( 'gdrive_to_posts_templates', array() );
 
-        $options = get_option( 'gdrive_to_posts_post_templates' );
-        if (!is_array($options)) {
-            // We will create the default option [empty array]
-            $options = array();
-            update_option( 'gdrive_to_posts_post_templates', $options );
-        }
 
         ?><div id="gdrive-to-posts-templates"><?php
 
-        $chose_tempate = __('Choose a template', 'gdrive_to_posts');
-        echo "<label>Select a template<select name='gdrive-to-posts-switch-template'>\n\t<option value='' selected>{$chose_tempate}</option>\n";
-        foreach ($options as $key => $template) {
+        $hidden_inputs = '';
+        $chose_template = __('Choose a template', 'gdrive_to_posts');
+        echo "<label>Select a template<select name='choose-editor-template'>\n\t<option value='' selected>{$chose_template}</option>\n";
+        foreach ($templates as $key => $template) {
+            if (!is_string($template)) {
+                continue;
+            }
             // print out the options for this template.
-            echo "\t<option value='{$key}'}>{$template['label']}</option>\n";
+            echo "\t<option value='{$key}'>{$key}</option>\n";
+
+            $hidden_inputs .= "<input type='hidden' id='gdrive_to_posts_templates[{$key}]' name='gdrive_to_posts_templates[{$key}]' value='{$template}'>";
         }
         echo "</select></label></div>";
 
+        // These hidden inputs hold the values of each template so we can pull their value into the mce editor if the user wants
+        // to edit the template body and then when the 'save changes' button is pushed they will all update.
+        echo "<div id='gdrive-hidden-templates'>{$hidden_inputs}</div>";
         echo "<table>";
-        $editor_id = "gdrive_to_posts_post_templates-template";
-        wp_editor( '', $editor_id, array('textarea_name'=> '') );
-
+        $editor_id = "gdrive_to_posts_templates-editor";
+        wp_editor('<h1>GDrive to Posts v0.1.0</h1><ul><li>Create a new template by entering a label and Sheets file ID in the boxes above</li>'
+                  . '<li>If you\'ve already created some templates you may switch between them using the dropdown above me!</li></ul>'
+                  , $editor_id, array('textarea_name'=> '') );
         echo "</table>";
+
 
     }
 
 
-
+    /**
+     *  Start the printing of the options.php page.
+     */
     function gdrive_to_posts_options_page( ) {
 
         ?>
@@ -257,8 +262,8 @@ class GDrive_To_Posts_Settings {
                         ?>
                         <hr>
                         <?php
-                        settings_fields( 'drivePostsSetting' );
-                        do_settings_sections( 'drivePostsSetting' );
+                        settings_fields( 'gdrivePostsSettings' );
+                        do_settings_sections( 'gdrivePostsSettings' );
                         submit_button();
                         ?>
                     </table>
@@ -273,27 +278,16 @@ class GDrive_To_Posts_Settings {
             <div class="gdrive-to-posts-preview">
                 <pre>
                     <?php
-                    $options = get_option( 'gdrive_to_posts_settings' );
-                    if (!isset($options['gdrive_file_id'])) {
-                        $options['gdrive_file_id'] = '';
-                        update_option('gdrive_to_posts_settings', $options);
-                    }
-                    if (is_object($this->google_drive) && !!$options['gdrive_file_id']) {
-                        $file = $this->google_drive->files->get($options['gdrive_file_id']);
+
+                    $sheet_id = '123123';
+                    if (is_object($this->google_drive) && !!$sheet_id) {
+                        $file = $this->google_drive->files->get($sheet_id);
                         if ($file && is_array($file->exportLinks)) {
 
                             // Get the file as text csv using the Google Drive Export method.
 
-                            //var_dump($this->google_drive->files);
-                            //var_dump($file);
-                            //$csv = @file_get_contents($file->exportLinks['text/csv']);
-
                             $csv = wp_remote_get($file->exportLinks['text/csv']);
-
-
                             @$csv = is_array($csv) ? $csv['body'] : null;
-
-
                             if ($csv) {
                                 // This will parse the csv and make new posts if that's what it should do.
                                 $workhorse = new GDrive_To_Posts_Workhorse();
