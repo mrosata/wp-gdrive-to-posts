@@ -28,6 +28,10 @@ if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 
+if (!defined('GDRIVE_TO_POSTS_DEBUG')) {
+	define('GDRIVE_TO_POSTS_DEBUG', true);
+}
+
 /**
  * The code that runs during plugin activation.
  * This action is documented in includes/class-gdrive_to_posts-activator.php

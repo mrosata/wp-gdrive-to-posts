@@ -40,12 +40,12 @@ class GDrive_To_Posts_Settings {
 
     private $google_drive;
 
-    function __construct($google_drive = false)
+    public function __construct($google_drive = false)
     {
         $this->google_drive = $google_drive;
     }
 
-    function google_settings_section_callback(  ) {
+    public function google_settings_section_callback(  ) {
 
         echo __( 'Create a GDrive App using the google developers console and then add the credentials here to allow the'
             . ' plugin access to your Google Drive Files. It should only need a read access as the plugin does not write'
@@ -55,7 +55,7 @@ class GDrive_To_Posts_Settings {
     }
 
 
-    function template_settings_section_callback() {
+    public function template_settings_section_callback() {
 
         echo __( 'In this section you should tell the plugin how to convert the rows in your Google Sheet file into a post.'
             . ' When trying to find the ID of a Google Sheet file remember that the id can be found in the URL between a '
@@ -69,7 +69,7 @@ class GDrive_To_Posts_Settings {
     }
 
     // This file should primarily consist of HTML with a little bit of PHP. -->
-    function google_api_key_field(  ) {
+    public function google_api_key_field(  ) {
 
         $options = get_option( 'gdrive_to_posts_settings' );
 
@@ -87,7 +87,7 @@ class GDrive_To_Posts_Settings {
     }
 
 
-    function service_account_email_address_field(  ) {
+    public function service_account_email_address_field(  ) {
 
         $options = get_option( 'gdrive_to_posts_settings' );
 
@@ -105,7 +105,7 @@ class GDrive_To_Posts_Settings {
     }
 
 
-    function service_account_certificate_fingerprints_field(  ) {
+    public function service_certificate_fingerprints_field(  ) {
 
         $options = get_option( 'gdrive_to_posts_settings' );
 
@@ -123,28 +123,42 @@ class GDrive_To_Posts_Settings {
     }
 
 
-    function gdrive_to_posts_interval_select_render(  ) {
+    public function fetch_interval_field(  ) {
 
         $options = get_option( 'gdrive_to_posts_settings' );
-        if (!isset($options['gdrive_to_posts_interval'])) {
-            $options['gdrive_to_posts_interval'] = '';
+        if (!isset($options['fetch_interval'])) {
+            $options['fetch_interval'] = '';
             update_option('gdrive_to_posts_settings', $options);
         }
         ?>
-        <select name='gdrive_to_posts_settings[gdrive_to_posts_select_field_1]'>
-            <option value='' <?php selected( $options['gdrive_to_posts_interval']); ?>>Constant</option>
-            <option value='1' <?php selected( $options['gdrive_to_posts_interval'] ); ?>>Every 1 hour</option>
-            <option value='2' <?php selected( $options['gdrive_to_posts_interval']); ?>>Every 2 hours</option>
-            <option value='6' <?php selected( $options['gdrive_to_posts_interval']); ?>>Every 6 Hours</option>
-            <option value='12' <?php selected( $options['gdrive_to_posts_interval'] ); ?>>Every 12 Hours</option>
+        <select name='gdrive_to_posts_settings[fetch_interval]'>
+            <option value='' <?php selected( $options['fetch_interval']); ?>>Constant</option>
+            <option value='1' <?php selected( $options['fetch_interval'] ); ?>>Every 1 hour</option>
+            <option value='2' <?php selected( $options['fetch_interval']); ?>>Every 2 hours</option>
+            <option value='6' <?php selected( $options['fetch_interval']); ?>>Every 6 Hours</option>
+            <option value='12' <?php selected( $options['fetch_interval'] ); ?>>Every 12 Hours</option>
         </select>
         <?php
 
     }
 
 
+    /**
+    *  The location for the p12 Google Service Key
+     * //todo: this should become a type=file
+     */
+    public function key_file_location_field( ) {
+        $options = get_option( 'gdrive_to_posts_settings' );
+        if (!isset($options['key_file_location'])) {
+            $options['key_file_location'] =  '';
+            update_option('gdrive_to_posts_settings', $options);
+        }
+        ?><input name="gdrive_to_posts_settings[key_file_location]" type="text" value="<?php echo $options['key_file_location'] ?>"><?php
+    }
 
-    function post_body_template_textarea( $id ) {
+
+
+    public function post_body_template_textarea( $id ) {
         $options = get_option( 'gdrive_to_posts_templates' );
         if (!is_array($options)) {
             // There is no way this should be called if the base level settings haven't even been created!
@@ -172,7 +186,7 @@ class GDrive_To_Posts_Settings {
     }
 
 
-    function create_new_template_fields( ) {
+    public function create_new_template_fields( ) {
         ?>
 
         <div class="form-group">
@@ -194,6 +208,7 @@ class GDrive_To_Posts_Settings {
 
         <button id="gdriveToPostsAddNewTemplateBtn" class="button button-primary" type="button" value="add_template"><?php _e('Add Template', 'gdrive_to_posts') ?>
         </button>
+        <hr>
         <?php
 
     }
@@ -204,7 +219,7 @@ class GDrive_To_Posts_Settings {
      * well as a template so they take up 2 fields and will be looped for how ever many types of
      * posts the user sets up.
      */
-    function templates_fields( ) {
+    public function templates_fields( ) {
 
         $options = get_option( 'gdrive_to_posts_templates');
 
@@ -225,9 +240,32 @@ class GDrive_To_Posts_Settings {
             // print out the options for this template.
             echo "\t<option value='{$key}'>{$key}</option>\n";
 
+            $template = esc_textarea($template);
             $hidden_inputs .= "<input type='hidden' id='gdrive_to_posts_templates[{$key}]' name='gdrive_to_posts_templates[{$key}]' value='{$template}'>";
         }
-        echo "</select></label><button class='button button-primary' type='button' id='get-gdrive-sheet-field-names'>Fetch Field Names</button></div>";
+        ?>
+        </select></label>
+        <button class='button button-primary' type='button' id='get-gdrive-sheet-field-names'>Fetch Field Names</button>
+        </div>
+        <div class="gdrive-template-fields-explanation open">
+            <p>
+                The <span class="gdrive-bold">"Fetch Field Names"</span> button will show your custom variables which are available for
+                use in your templates. Create variables as a-zA-Z and _ words with no spaces in the top row of you spreadsheet.
+                The variables are NOT CASE SENSITIVE. For example, you could use <code>first_name</code> in your spreadsheet and
+                then reference in the template below using <code>{!!LAST_NAME!!}</code>, <code>{!!last_name!!}</code> or even
+                <code>{!!LasT_NaMe!!}</code>. GDrive column syntax is available also to reference columns by number.
+            </p>
+            <dl>
+                <dt>Named columns are referenced in template using: </dt>
+                <dd><code>{!!</code><em>variable_name</em><code>!!}</code></dd>
+                <dt>Individual columns using: </dt>
+                <dd><code>{!#</code><em>number</em><code>#!}</code></dd>
+            </dl>
+        </div>
+        <div class='gdrive-template-fields-listings'>
+
+        </div>
+        <?php
 
         // These hidden inputs hold the values of each template so we can pull their value into the mce editor if the user wants
         // to edit the template body and then when the 'save changes' button is pushed they will all update.
@@ -246,7 +284,7 @@ class GDrive_To_Posts_Settings {
     /**
      *  Start the printing of the options.php page.
      */
-    function gdrive_to_posts_options_page( ) {
+    public function gdrive_to_posts_options_page( ) {
 
         ?>
         <section class="gdrive-to-posts-modal">
@@ -263,11 +301,6 @@ class GDrive_To_Posts_Settings {
                         <?php
                         settings_fields( 'gdriveAPISettings' );
                         do_settings_sections( 'gdriveAPISettings' );
-                        ?>
-                        <hr>
-                        <?php
-                        //settings_fields( 'gdrivePostsSettings' );
-                        //do_settings_sections( 'gdrivePostsSettings' );
                         submit_button();
                         ?>
                     </table>
@@ -275,38 +308,21 @@ class GDrive_To_Posts_Settings {
             </div>
         </section>
 
+        <hr>
+
         <section class="wrap">
             <div class="gdrive-to-posts-testing">
-                <h2>If the area below shows information about your Google Drive then your API info is good!</h2>
+                <h2>Google Drive Testing Area!</h2>
+                <button class="button button-secondary google-client-test-btn" type="button" id="google-client-test">TEST GOOGLE CLIENT</button>
+                <div class="test-gclient-results"></div>
             </div>
+
+            <hr>
+
             <div class="gdrive-to-posts-preview">
-                <pre>
-                    <?php
-
-                    $sheet_id = '123123';
-                    if (is_object($this->google_drive) && !!$sheet_id) {
-                        $file = $this->google_drive->files->get($sheet_id);
-                        if ($file && is_array($file->exportLinks)) {
-
-                            // Get the file as text csv using the Google Drive Export method.
-
-                            $csv = wp_remote_get($file->exportLinks['text/csv']);
-                            @$csv = is_array($csv) ? $csv['body'] : null;
-                            if ($csv) {
-                                // This will parse the csv and make new posts if that's what it should do.
-                                $workhorse = new GDrive_To_Posts_Workhorse();
-                                $workhorse->add($csv);
-                                // We want to see the output here.
-                                $workhorse->run(true);
-                            }
-                        }
-                    }
-                    else {?>
-                        <h4>Your Google Server isn't setup correctly yet.</h4>
-                        <?php
-                    }
-                    ?>
-                </pre>
+                <h2>Sheet to post preview!</h2>
+                <button class="button button-secondary sheet-template-tester-btn" type="button" id="sheet-template-tester">TEST RUN THIS TEMPLATE</button>
+                <div class="test-preview-results"></div>
             </div>
         </section>
         <?php

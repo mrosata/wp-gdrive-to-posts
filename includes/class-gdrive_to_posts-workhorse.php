@@ -30,6 +30,30 @@ class GDrive_To_Posts_Workhorse
     }
 
 
+    /**
+     * Gets a file from GDrive and adds it as the $csv. This is good if the caller
+     * doesn't have a CSV but they have the GDrive object and sheet id.
+     *
+     * @param \Google_Service_Drive $gdrive
+     * @param $sheet_id
+     * @return bool
+     */
+    public function get(\Google_Service_Drive $gdrive, $sheet_id) {
+
+        $file = $gdrive->files->get($sheet_id);
+        if ($file && is_array($file->exportLinks)) {
+
+            // Get the file as text csv using the Google Drive Export method.
+            $csv = wp_remote_get($file->exportLinks['text/csv']);
+            @$csv = is_array($csv) ? $csv['body'] : null;
+            if (!$csv) {
+                return false;
+            }
+            $this->add($csv);
+        }
+        return $csv;
+    }
+
     public function add($csv) {
         if (!$csv) {
             return false;
@@ -53,7 +77,6 @@ class GDrive_To_Posts_Workhorse
         return $keys;
     }
 
-
     public function run($show_output = false) {
         $csv_text = $this->csv_text;
 
@@ -74,4 +97,17 @@ class GDrive_To_Posts_Workhorse
 
         }
     }
+
+
+    public function parse_file(\Google_Service_Drive $gdrive, $sheet_id) {
+        if (!$this->get($gdrive, $sheet_id)) {
+            return false;
+        }
+        if (!($template_vars = $this->get_fields())) {
+            $template_vars = array();
+        }
+
+
+    }
+
 }

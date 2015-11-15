@@ -64,15 +64,8 @@ fieldset {
     margin: 0 2px;
     border: 1px solid #c0c0c0;
 }
-legend {
-    padding: 0;
-    border: 0;
-}
 textarea {
     overflow: auto;
-}
-optgroup {
-    font-weight: bold;
 }
 table {
     border-spacing: 0;
@@ -989,6 +982,58 @@ table th[class*="col-"] {
     top: 30%;
     left: 20%;
     right: 20%;
-    height: 15rem;
     height: 15em;
+    height: 15rem;
+}
+
+.google-client-test-btn {
+    display: none;
+}
+
+.gdrive-template-fields-listings {
+    min-height: 2em;
+    min-height: 2rem;
+}
+
+.gdrive-bold {
+    font-weight: bold;
+    font-size: 1.05em;
+}
+.gdrive-template-fields-explanation {
+    display: none;
+}
+.gdrive-template-fields-explanation.open {
+    display: block;
+}
+.gdrive-template-fields-explanation.open ~ .gdrive-template-fields-listings {
+    display: none;
+}
+.gdrive-template-fields-listings {
+    min-height: 8em;
+}
+ul.gdrive-template-variables-list {
+    display: block;
+    list-style: none;
+}
+ul.gdrive-template-variables-list li {
+    display: inline-block;
+}
+dt {
+    text-decoration: underline;
+}
+
+.test-gclient-results {
+    font-size: 1.1em;
+}
+.test-gclient-results span {
+    font-weight: bold;
+}
+span.fail {
+    color: #d02c21;
+}
+span.pass {
+    color: #3c763d;
+}
+hr {
+    border-color: #DEDEDE;
 }

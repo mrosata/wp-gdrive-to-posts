@@ -24,36 +24,162 @@
         this.setupFetchFieldsButton();
         this.setupBtn();
         this.templateSelect();
+        this.setupGoogleTestBtn();
+        this.setupTemplateTestBtn();
       });
     }
 
     setupFetchFieldsButton() {
       var fetchFieldsBtn = $('#get-gdrive-sheet-field-names');
       if (fetchFieldsBtn.length) {
-        fetchFieldsBtn.on('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var sheetID = fetchFieldsBtn.data('sheet-label');
-          var data = {
-            action: 'gdrive_to_posts_fetch_sheet_fields',
-            nonce: gdriveToPosts.nonce,
-            sheet_label: sheetID
-          };
-          $.ajax({
-            url: gdriveToPosts.ajaxURL,
-            type: 'post',
-            dataType: 'json',
-            data: data,
-            success (resp) {
-              if (!resp || resp.success != 1) {
-                return false;
+        fetchFieldsBtn
+          .on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var sheetID = $(this).data('sheet-label'),
+              fieldsExplaination = $('.gdrive-template-fields-explanation');
+
+            var data = {
+              action: 'gdrive_to_posts_fetch_sheet_fields',
+              nonce: gdriveToPosts.nonce,
+              sheet_label: sheetID
+            };
+
+            // closes plain description + shows the .gdrive-template-fields-listings which holds the ul we will make.
+            fieldsExplaination.removeClass('open');
+            $.ajax({
+              url: gdriveToPosts.ajaxURL,
+              type: 'post',
+              dataType: 'json',
+              data: data,
+              complete (resp) {
+                var outputElem = $('.gdrive-template-fields-listings'),
+                  fields,
+                  num = 1,
+                  output = '',
+                  outputFields = '',
+                  outputNums = '';
+                if (!resp || !resp.responseJSON || resp.responseJSON.success != 1) {
+                  output += `<h5>Could not find any fields for the Sheet File ID provided with template ${sheetID}!</h5>`;
+                } else {
+                  resp = resp.responseJSON;
+                  fields = resp.fields
+                  // Basically we should just be getting back a list of fields
+                  console.log(resp.fields);
+
+                  // Create the output for the fields if found
+                  if (fields.length) {
+                    output += `<p><span class="gdrive-bold">Here are your ${fields.length} variables.<\/span> `
+                      +  'Type them as shown below and they will be replaced by column data as posts are created. '
+                      +  'To change a variable name simply edit the top row of your Google Sheet!<dl>';
+
+                    for (let field of fields) {
+                      outputFields += `<code>{!!${field}!!}</code>`;
+                      outputNums += `<code>{!#${num++}#!}</code>`;
+                    }
+                    output +=  `<dt>Named columns are referenced in <span class="gdrive-bold">"${sheetID}"<\/span> template using: <\/dt>`;
+                    output += `<dd>${outputFields}</dd><dt>Numbered columns are referenced in <span class="gdrive-bold">"${sheetID}"<\/span> template using: <\/dt><dd>${outputNums}<\/dd>`;
+                    output += `<\/dl><\/ul><\/p>`
+                  }
+                  else {
+                    output += `<h5>Could not find any fields for the Sheet File ID provided with template ${sheetID}!</h5>`;
+                  }
+                }
+                if (outputElem.length) {
+                  outputElem.html(output);
+                }
+
               }
-              // Basically we should just be getting back a list of fields
-              console.log(resp.fields);
-            }
+            });
           });
-        });
       }
+    }
+
+
+    /**
+     * Click Handler for Google Test Button
+     */
+    setupGoogleTestBtn () {
+      var googleTestBtn = $('#google-client-test'),
+        data;
+      if (!googleTestBtn.length) {
+        return false;
+      }
+
+      googleTestBtn.on('click.gdrive-to-posts', (evt) => {
+        data = {
+          nonce: gdriveToPosts.nonce,
+          action: 'gdrive_to_posts_test_gclient'
+        };
+
+        $.ajax({
+          url: gdriveToPosts.ajaxURL,
+          type: 'post',
+          dataType: 'json',
+          data,
+          complete (resp) {
+            var output = '';
+            if (!resp || typeof resp !== "object" || typeof resp.responseJSON !== "object") {
+              output += '<h3>Status of Google Client:  NOT CONNECTED';
+              output += '<h3>Status of GDrive Service: NOT CONNECTED';
+            }
+            var elem = $('.test-gclient-results');
+            output += `<br><span>Status of Google Client: <\/span><span class="${( resp.responseJSON.gclient == 1 ? 'pass">' : 'fail">NOT ' )}CONNECTED<\/span>`;
+            output += `<br><span>Status of GDrive Service:<\/span><span class="${( resp.responseJSON.gdrive == 1  ? 'pass">' : 'fail">NOT ' )}CONNECTED<\/span>`;
+
+            // show the results in html.
+            if (elem.length) {
+              elem.html(output);
+            }
+          }
+        });
+      });
+    }
+
+  /**
+     * Click Handler for Google Test Button
+     */
+    setupTemplateTestBtn () {
+      var templateTestBtn = $('#sheet-template-tester'),
+        data;
+      if (!templateTestBtn.length) {
+        return false;
+      }
+
+      templateTestBtn.on('click.gdrive-to-posts', (evt) => {
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        // This button gets sheetID like the fields button (through the select change method).
+        var sheetID = $(this).data('sheet-label');
+        var data = {
+          action: 'gdrive_to_posts_test_template',
+          nonce: gdriveToPosts.nonce,
+          sheet_label: sheetID
+        };
+
+        $.ajax({
+          url: gdriveToPosts.ajaxURL,
+          type: 'post',
+          dataType: 'json',
+          data,
+          complete (resp) {
+            var output = '';
+            if (!resp || typeof resp !== "object" || typeof resp.responseJSON !== "object") {
+              output += '<h3>Status of Google Client:  NOT CONNECTED';
+              output += '<h3>Status of GDrive Service: NOT CONNECTED';
+            }
+            var elem = $('.test-template-results');
+            output += `<br><span>Status of Google Client: <\/span><span class="${( resp.responseJSON.gclient == 1 ? 'pass">' : 'fail">NOT ' )}CONNECTED<\/span>`;
+            output += `<br><span>Status of GDrive Service:<\/span><span class="${( resp.responseJSON.gdrive == 1  ? 'pass">' : 'fail">NOT ' )}CONNECTED<\/span>`;
+
+            // show the results in html.
+            if (elem.length) {
+              elem.html(output);
+            }
+          }
+        });
+      });
     }
 
 
@@ -81,10 +207,16 @@
 
     templateSelect () {
       var $selectBox = $('select[name="choose-editor-template"]'),
-          templateOptionLabel = 'gdrive_to_posts_templates',
-          fetchFieldsBtn = $('#get-gdrive-sheet-field-names');
+        templateOptionLabel = 'gdrive_to_posts_templates',
+        fetchFieldsBtn = $('#get-gdrive-sheet-field-names, #sheet-template-tester'),
+        fieldsExplaination = $('.gdrive-template-fields-explanation'),
+        outputElem = $('.gdrive-template-fields-listings');
 
       $selectBox.on('change', function (evt) {
+          // doing this will hide the fields that were open from last template viewed
+          fieldsExplaination.addClass('open');
+          // Empty the elem that output template variables specific to each template
+          outputElem.empty();
         var selectedOption = $(this).val(),
           editor = {$: $(`#${templateOptionLabel}-editor`)},
           hiddenTemplateFields = $('#gdrive-hidden-templates'),
@@ -105,7 +237,7 @@
           return false;
         }
         // We only want to see this button when there is a file id to show.
-        fetchFieldsBtn.data('sheet-label', selectedOption).show();
+        fetchFieldsBtn.show().data('sheet-label', selectedOption);
 
 
         desiredTemplate.name = `${templateOptionLabel}[${selectedOption}]`;
@@ -202,7 +334,7 @@
             success: function (resp) {
               if (resp && resp.success == 1 && resp.html && resp.hiddenHTML) {
                 var templateDropdown = $('select[name="choose-editor-template"]'),
-                    templateHiddenInputs = $('#gdrive-hidden-templates');
+                  templateHiddenInputs = $('#gdrive-hidden-templates');
                 if (templateDropdown.length && !!resp.html) {
                   templateDropdown.append(resp.html);
                 }

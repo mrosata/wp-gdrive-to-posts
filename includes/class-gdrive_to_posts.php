@@ -103,6 +103,11 @@ class Gdrive_to_posts {
 		set_include_path(get_include_path() . PATH_SEPARATOR . plugin_dir_path( dirname( __FILE__ ) ) . 'includes/google-api-php-client/src');
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/google-api-php-client/src/Google/autoload.php';
 
+		/**
+		 * The class used to parse the csv files returned from Google Drive
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-gdrive_to_posts-google-client-handler.php';
+
 
 		/**
 		 * The class used to parse the csv files returned from Google Drive
@@ -176,6 +181,8 @@ class Gdrive_to_posts {
 
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_add_new_template', $plugin_admin, 'add_new_template' );
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_fetch_sheet_fields', $plugin_admin, 'fetch_sheet_fields' );
+		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_test_gclient', $plugin_admin, 'test_gclient' );
+		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_test_template', $plugin_admin, 'test_template' );
 	}
 
 	/**

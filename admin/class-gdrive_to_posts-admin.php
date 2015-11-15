@@ -33,8 +33,9 @@ class Gdrive_to_posts_Admin {
 	private $version;
 
 
-	private $google_drive;
-	private $google_client;
+	private $gdrive;
+	private $gclient;
+
 	/**
 	 * Initialize the class and set its properties.
 	 *
@@ -43,36 +44,31 @@ class Gdrive_to_posts_Admin {
 	 * @param      string    $version    The version of this plugin.
 	 */
 	public function __construct( $plugin_name, $version ) {
-
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
-
-		// Setup $this->client
-		$this->gdrive_connection_init();
-		if (is_object($this->google_client)) {
-			// Initialize Google Drive service
-			$this->google_drive = new \Google_Service_Drive($this->google_client);
-		}
-		$this->settings_page = new GDrive_To_Posts_Settings($this->google_drive);
-
+        $this->settings_page = new GDrive_To_Posts_Settings();
 	}
 
 
+    /**
+     * Create Options menu in dashboard.
+     */
 	function add_admin_menu() {
 
 		add_menu_page(
-				'Google Drive to Posts', 'Google Drive to Posts Menu', 'manage_options',
-				'gdrive_to_posts', array( $this->settings_page, 'gdrive_to_posts_options_page')
+            'Google Drive to Posts', 'Google Drive to Posts Menu', 'manage_options',
+            'gdrive_to_posts', array( $this->settings_page, 'gdrive_to_posts_options_page')
 		);
 	}
 
 
 	/**
-	 * Create a settings page in admin menu
+	 * Build the settings page.
 	 */
 	public function settings_init() {
 		$gdrive_api_option_group = 'gdriveAPISettings';
 		$gdrive_post_api_section = 'gdrive_to_posts_settings';
+		$gdrive_post_posts_section = 'gdrive_to_posts_templates';
 
 		add_settings_section(
 				$gdrive_post_api_section,
@@ -98,25 +94,33 @@ class Gdrive_to_posts_Admin {
 		);
 
 		add_settings_field(
-				'service_account_certificate_fingerprints',
+				'service_certificate_fingerprints',
 				__( 'Service Account Certificate Fingerprints: ', 'gdrive_to_posts' ),
-				array( $this->settings_page, 'service_account_certificate_fingerprints_field'),
+				array( $this->settings_page, 'service_certificate_fingerprints_field'),
 				$gdrive_api_option_group,
 				$gdrive_post_api_section
 		);
 
 		add_settings_field(
-				'gdrive_to_posts_interval',
-				__( 'How often to post?', 'gdrive_to_posts' ),
-				array( $this->settings_page, 'gdrive_to_posts_interval_select_render'),
+				'fetch_interval',
+				__( 'Check for new posts every: ', 'gdrive_to_posts' ),
+				array( $this->settings_page, 'fetch_interval_field'),
+				$gdrive_api_option_group,
+				$gdrive_post_api_section
+		);
+
+		add_settings_field(
+				'key_file_location',
+				__( 'Key File P12  Location: ', 'gdrive_to_posts' ),
+				array( $this->settings_page, 'key_file_location_field'),
 				$gdrive_api_option_group,
 				$gdrive_post_api_section
 		);
 
 
+        /** Posts Templates Settings
+         */
 
-		$gdrive_template_option_group = 'gdrivePostsSettings';
-		$gdrive_post_posts_section = 'gdrive_to_posts_templates';
 		add_settings_section(
 				$gdrive_post_posts_section,
 				__( 'Define rules for creating new posts', 'gdrive_to_posts' ),
@@ -136,7 +140,7 @@ class Gdrive_to_posts_Admin {
 
 		add_settings_field(
 				'templates',
-				__( 'Post Templates: ', 'gdrive_to_posts' ),
+				__( 'Google Sheets to Post Templates: ', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'templates_fields'),
 				$gdrive_api_option_group,
 				$gdrive_post_posts_section
@@ -211,7 +215,6 @@ class Gdrive_to_posts_Admin {
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
-
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/gdrive_to_posts-admin.js', array( 'jquery' ), $this->version, false );
 		wp_localize_script($this->plugin_name, 'gdriveToPosts', array(
 				'nonce' => wp_create_nonce('gdrive_to_posts_add-new-template'),
@@ -227,6 +230,40 @@ class Gdrive_to_posts_Admin {
 	}
 
 
+    /**
+     * Connects to the Google Client and returns the client object to be used
+     * when instantiating new Google Service API Objects.
+     *
+     * @return \Google_Client
+     */
+    public function gdrive_connection() {
+
+        $options = get_option( 'gdrive_to_posts_settings' );
+
+        if (!is_array($options) || !($gclient = new Google_Client_Handler($options)) ) {
+            if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
+                echo "Missing Google Drive Connection Settings";
+            }
+            return false;
+        }
+
+        $gdrive = $gclient->connect('drive');
+        if (!is_a($gdrive, 'Google_Service_Drive')) {
+            if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
+                echo "Couln't connect to Drive";
+            }
+            return false;
+        }
+
+        return $gdrive;
+    }
+
+
+
+	/**
+	 *  Get the fields from the top row of a Google Sheet and return it to the front-end
+     *  - this is an ajax action. 'wp_ajax_gdrive_to_posts_fetch_sheet_fields'
+	 */
 	public function fetch_sheet_fields() {
 		// For now I think we will only allow new templates to be added using Ajax
 		if (!defined('DOING_AJAX') || !DOING_AJAX || !isset($_POST['sheet_label'])) {
@@ -237,45 +274,40 @@ class Gdrive_to_posts_Admin {
 		}
 
 		$options_sheet_id = get_option('gdrive_to_posts_sheet_id');
-		$sheet_label = filter_var($_POST['sheet_label'], FILTER_SANITIZE_SPECIAL_CHARS);
+		$sheet_label = esc_attr($_POST['sheet_label']);
 		if (!is_string(($sheet_id = $options_sheet_id[$sheet_label]))) {
 			$this->end_ajax();
 		}
+
 		// Need the google drive connection.
-		gdrive_connection_init();
+		$gdrive = $this->gdrive_connection();
+        // This will parse the csv and make new posts if that's what it should do.
+        $workhorse = new GDrive_To_Posts_Workhorse();
 
-		if (is_object($this->google_client)) {
-			$file = $this->google_client->files->get($sheet_id);
-			if ($file && is_array($file->exportLinks)) {
-
-				// Get the file as text csv using the Google Drive Export method.
-
-				$csv = wp_remote_get($file->exportLinks['text/csv']);
-				@$csv = is_array($csv) ? $csv['body'] : null;
-				if (!$csv) {
-					$this->end_ajax(array('success'=>0, 'error'=>"Couldn't find Google Sheet with ID: {$sheet_id}."));
-				}
-				// This will parse the csv and make new posts if that's what it should do.
-				$workhorse = new GDrive_To_Posts_Workhorse();
-				$workhorse->add($csv);
-				// We want to see the output here.
-				if ($fields = $workhorse->get_fields()) {
-					$this->end_ajax(array('success'=>1, 'fields'=>$fields));
-				} else {
-					$this->end_ajax(array('success'=>0, 'error'=>'Connected OK, Found the Sheet, No Fields.'));
-				}
-
-			}
-		}
-		else {
-			$this->end_ajax(array('success'=>0, 'error'=>"Couldn't connect to GDrive with your credentials."));
-		}
+        if ($workhorse->get($gdrive, $sheet_id)) {
+            // We want to see the output here.
+            if ($fields = $workhorse->get_fields()) {
+                $this->end_ajax(array('success'=>1, 'fields'=>$fields));
+            } else {
+                $this->end_ajax(array('success'=>0, 'error'=>'Connected OK, Found the Sheet, No Fields.'));
+            }
+        }
+        else {
+            if (!$gdrive) {
+                $this->end_ajax(array('success'=>0, 'error'=>"Couldn't connect to GDrive with your credentials."));
+            }
+            $this->end_ajax(array('success'=>0, 'error'=>"Couldn't get file from GDrive."));
+        }
 
 		$this->end_ajax();
 	}
 
 
-
+    /**
+     * Adds new template and sheet file id.
+     *  -- Ajax 'wp_ajax_gdrive_to_posts_add_new_template'
+     *  -- IF the template already exists then it just changes the sheet file id.
+     */
 	public function add_new_template() {
 		// For now I think we will only allow new templates to be added using Ajax
 		if (!defined('DOING_AJAX') || !DOING_AJAX || !isset($_POST['new_sheet_id']) || !isset($_POST['new_template_label'])) {
@@ -286,25 +318,23 @@ class Gdrive_to_posts_Admin {
 		}
 
 		// The file id is Google Sheet file id and becomes options[n][file_id] = $file_id
-		$new_file_id = filter_var($_POST['new_sheet_id'], FILTER_SANITIZE_SPECIAL_CHARS);
+		$new_file_id = esc_url($_POST['new_sheet_id'], FILTER_SANITIZE_SPECIAL_CHARS);
 		// The file key is just a key to use as a label becomes options[n][label] = $template_label
-		$template_label = filter_var($_POST['new_template_label'], FILTER_SANITIZE_SPECIAL_CHARS);
+		$template_label = esc_attr($_POST['new_template_label']);
 		$template_label = str_replace(' ', '-', $template_label);
 
 		if (!!$new_file_id && !!$template_label) {
 			$options_template = get_option('gdrive_to_posts_templates');
 			$options_sheet_id = get_option('gdrive_to_posts_sheet_id', array());
 
-			// Make sure that the label is unique in our options
-			if (isset($options_template[$template_label]) || isset($options_sheet_id[$template_label])) {
-				$this->end_ajax(array(
-						'success' => 0,
-						'error' =>"GDrive to Posts - Can't use `{$template_label}` label twice!"
-				));
-			}
 
-			// Set the new label up with a template
-			$options_template[$template_label] = 'nbsp;';
+            // Only set the template text on labels that are not yet created.
+			if (!isset($options_template[$template_label])) {
+                $options_template[$template_label] = 'Use this area to create a new template';
+                $response['message'] = 'Created new template!';
+			}
+            else {$response['message'] = "Updated File ID on label {$template_label}";}
+
 			$options_sheet_id[$template_label] = $new_file_id;
 			update_option('gdrive_to_posts_templates', $options_template);
 			update_option('gdrive_to_posts_sheet_id', $options_sheet_id);
@@ -322,56 +352,84 @@ class Gdrive_to_posts_Admin {
 	}
 
 
-	/** @method gdrive_connection_init
-	 *
-	 * Connects to the Google Client and returns the client object to be used
-	 * when instantiating new Google Service API Objects.
-	 *
-	 * @return \Google_Client
-	 */
-	public function gdrive_connection_init() {
 
-		$options = get_option( 'gdrive_to_posts_settings' );
-		if (!is_array($options)) {
-			// options are not set up, lets bounce!
-			return false;
-		}
-		try {
+    /**
+     * Test the connection to the google drive service
+     *  -- Ajax 'wp_ajax_gdrive_to_posts_test_gclient'
+     *
+     * @return \Google_Client
+     */
+    public function test_gclient() {
 
-			if (!$this->google_client) {
-				$client_email = $options['service_account_email_address'];
+        if (!defined('DOING_AJAX') || !DOING_AJAX) {
+            wp_die("This function should only be called using Ajax.");
+        }
+        if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
+            $this->end_ajax();
+        }
 
-				$private_key = file_get_contents(plugin_dir_path( dirname( __FILE__ ) ) . 'mikes map-fc28531dc547.p12');
-				$scopes = array(
-						'https://www.googleapis.com/auth/sqlservice.admin',
-						'https://www.googleapis.com/auth/drive.readonly',
-						'https://www.googleapis.com/auth/drive.photos.readonly',
-						'https://www.googleapis.com/auth/drive.metadata.readonly',
-						'https://www.googleapis.com/auth/drive.metadata',
-						'https://www.googleapis.com/auth/drive.file'
-				);
+        $resp = array('success' => 0, 'gclient' => 0, 'gdrive' => 0);
 
-				$credentials = new \Google_Auth_AssertionCredentials(
-						$client_email,
-						$scopes,
-						$private_key
-				);
-				//notasecret
-				$client = new \Google_Client();
-				$client->setAssertionCredentials($credentials);
-				if ($client->getAuth()->isAccessTokenExpired()) {
-					$client->getAuth()->refreshTokenWithAssertion();
-				}
+        $options = get_option( 'gdrive_to_posts_settings' );
+        if (!is_array($options) || !($gclient = new Google_Client_Handler($options)) ) {
+            $resp['error'] = "Missing Google Drive Connection Settings";
+            $this->end_ajax($resp);
+            exit;
+        }
+
+        $resp['gclient'] = intval($gclient->OK);
+        $gdrive = $gclient->connect('drive');
+
+        if (is_a($gdrive, 'Google_Service_Drive')) {
+            $resp['success'] = 1;
+            $resp['gdrive'] = 1;
+        }
+
+        $this->end_ajax($resp);
+        exit;
+    }
 
 
-				$this->google_client = $client;
-			}
+    /**
+     * Test the connection to the google drive service
+     *  -- Ajax 'wp_ajax_gdrive_to_posts_test_template'
+     *
+     * @return \Google_Client
+     */
+    public function test_template() {
 
-			return $this->google_client;
-		} catch (\Google_Auth_Exception $e) {
-			// The Google Auth didn't go through
-		}
-		return false;
-	}
+        $resp = array('success'=>0);
+        if (!defined('DOING_AJAX') || !DOING_AJAX || !isset($_POST['sheet_label'])) {
+            $this->end_ajax();
+        }
+        if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
+            $this->end_ajax();
+        }
+
+        $options_sheet_id = get_option('gdrive_to_posts_sheet_id');
+        $sheet_label = esc_attr($_POST['sheet_label']);
+        if (!is_string(($sheet_id = $options_sheet_id[$sheet_label]))) {
+            $resp['error'] = "Sheet ID {$sheet_id} doesn't work!";
+            $this->end_ajax();
+        }
+
+        // Need the google drive connection.
+        $gdrive = $this->gdrive_connection();
+        // This will parse the csv and make new posts if that's what it should do.
+        $workhorse = new GDrive_To_Posts_Workhorse();
+
+        if ($output = $workhorse->parse_file($gdrive, $sheet_id)) {
+            // We want to see the output here.
+            $this->end_ajax(array('success'=>0, 'output'=>$output));
+        }
+        else {
+            if (!$gdrive) {
+                $this->end_ajax(array('success'=>0, 'error'=>"Couldn't connect to GDrive with your credentials."));
+            }
+            $this->end_ajax(array('success'=>0, 'error'=>"Couldn't get file from GDrive."));
+        }
+
+        $this->end_ajax();
+    }
 }
 
