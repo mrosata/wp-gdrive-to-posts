@@ -84,6 +84,10 @@ class Gdrive_to_posts {
 	 *
 	 * Include the following files that make up the plugin:
 	 *
+	 * - \Google_Client which connects to and authentics users Google API
+	 * - \Google_Service_***** pass these a Google_Client to connect to service like Drive
+	 * - GDrive_to_Posts_Workhorse. Actual CSV parser, template and creation of posts
+	 * - Google_Client_Handler. Custom class to adapt Google API to plugin options
 	 * - Gdrive_to_posts_Loader. Orchestrates the hooks of the plugin.
 	 * - Gdrive_to_posts_i18n. Defines internationalization functionality.
 	 * - Gdrive_to_posts_Admin. Defines all hooks for the admin area.
@@ -100,21 +104,15 @@ class Gdrive_to_posts {
 		/**
 		 * Need to add the Google API Library to the include path.
 		 */
-		set_include_path(get_include_path() . PATH_SEPARATOR . plugin_dir_path( dirname( __FILE__ ) ) . 'includes/google-api-php-client/src');
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/google-api-php-client/src/Google/autoload.php';
-
 		/**
 		 * The class used to parse the csv files returned from Google Drive
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-gdrive_to_posts-google-client-handler.php';
-
-
 		/**
 		 * The class used to parse the csv files returned from Google Drive
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-gdrive_to_posts-workhorse.php';
-
-
 		/**
 		 * The class responsible for orchestrating the actions and filters of the
 		 * core plugin.

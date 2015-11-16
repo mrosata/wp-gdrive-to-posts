@@ -252,8 +252,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
       key: 'templateSelect',
       value: function templateSelect() {
         var $selectBox = $('select[name="choose-editor-template"]'),
-            templateOptionLabel = 'gdrive_to_posts_templates',
-            titlesOptionLabel = 'gdrive_to_posts_template_titles',
+            templateOptionLabel = 'gdrive_to_posts_template_body',
+            titlesOptionLabel = 'gdrive_to_posts_template_title',
             fetchFieldsBtn = $('#get-gdrive-sheet-field-names, #sheet-template-tester'),
             fieldsExplaination = $('.gdrive-template-fields-explanation'),
             outputElem = $('.gdrive-template-fields-listings');

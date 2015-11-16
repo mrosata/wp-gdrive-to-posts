@@ -35,6 +35,7 @@ class Gdrive_to_posts_Admin {
 
 	private $gdrive;
 	private $gclient;
+	private $settings_for_templates = array('category', 'tags', 'author', 'data', 'sheet_id', 'last_line', 'title', 'body');
 
 	/**
 	 * Initialize the class and set its properties.
@@ -68,7 +69,7 @@ class Gdrive_to_posts_Admin {
 	public function settings_init() {
 		$gdrive_api_option_group = 'gdriveAPISettings';
 		$gdrive_post_api_section = 'gdrive_to_posts_settings';
-		$gdrive_post_posts_section = 'gdrive_to_posts_templates';
+		$gdrive_post_posts_section = 'gdrive_to_posts_template_body';
 
 		add_settings_section(
 				$gdrive_post_api_section,
@@ -137,14 +138,14 @@ class Gdrive_to_posts_Admin {
 				$gdrive_post_posts_section
 		);
 
-        // The title templates
+        /* The title templates
 		add_settings_field(
 				'template_titles',
 				__( 'Google Sheets to Post Templates: ', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'template_titles_fields'),
 				$gdrive_api_option_group,
 				$gdrive_post_posts_section
-		);
+		);*/
 
         // The body templates
 		add_settings_field(
@@ -156,11 +157,29 @@ class Gdrive_to_posts_Admin {
 		);
 
 
-		//register_setting( $gdrive_template_option_group, 'gdrive_to_posts_sheet_id' );
-		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_titles' );
-		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_templates' );
-		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_settings' );
+		//register_setting( $gdrive_template_option_group, 'gdrive_to_posts_template_sheet_id' );
+		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_csv_last_line' );
 
+		/**
+		 * Even though WP allows for multi arrays in the settings, if we store options that way then
+		 * we have to have them all present on the page anytime that the page is reloaded.
+		 */
+		foreach($this->settings_for_templates as $setting) {
+			//$_opt = get_option("gdrive_to_posts_template_{$setting}", array());
+			//update_option("gdrive_to_posts_template_{$setting}", $_opt);
+			register_setting( $gdrive_api_option_group, "gdrive_to_posts_template_{$setting}" );
+		}
+
+
+		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_tags' );
+		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_category' );
+		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_author' );
+		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_data' );
+
+		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_title' );
+		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_body' );
+
+		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_settings' );
 
 		/*
 		add_settings_field(
@@ -248,7 +267,7 @@ class Gdrive_to_posts_Admin {
      */
     public function gdrive_connection() {
 
-        $options = get_option( 'gdrive_to_posts_settings' );
+        $options = get_option( 'gdrive_to_posts_settings', array() );
 
         if (!is_array($options) || !($gclient = new Google_Client_Handler($options)) ) {
             if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
@@ -283,7 +302,7 @@ class Gdrive_to_posts_Admin {
 			$this->end_ajax();
 		}
 
-		$options_sheet_id = get_option('gdrive_to_posts_sheet_id');
+		$options_sheet_id = get_option('gdrive_to_posts_template_sheet_id', array());
 		$sheet_label = esc_attr($_POST['sheet_label']);
 		if (!is_string(($sheet_id = $options_sheet_id[$sheet_label]))) {
 			$this->end_ajax();
@@ -292,7 +311,7 @@ class Gdrive_to_posts_Admin {
 		// Need the google drive connection.
 		$gdrive = $this->gdrive_connection();
         // This will parse the csv and make new posts if that's what it should do.
-        $workhorse = new GDrive_To_Posts_Workhorse();
+        $workhorse = new GDrive_to_Posts_Workhorse();
 
         if ($workhorse->get($gdrive, $sheet_id)) {
             // We want to see the output here.
@@ -334,33 +353,34 @@ class Gdrive_to_posts_Admin {
 		$template_label = str_replace(' ', '-', $template_label);
 
 		if (!!$new_file_id && !!$template_label) {
-			$options_template = get_option('gdrive_to_posts_templates');
-			$options_sheet_id = get_option('gdrive_to_posts_sheet_id', array());
-            $options_title = get_option('gdrive_to_posts_template_titles', array());
+			//$options_template = get_option('gdrive_to_posts_template_body');
+			$options_sheet_id = get_option('gdrive_to_posts_template_sheet_id', array());
 
-
-            // Only set the template text on labels that are not yet created.
+            /*/ Only set the template text on labels that are not yet created.
 			if (!isset($options_template[$template_label])) {
                 $options_template[$template_label] = 'Use this area to create a new template';
                 $response['message'] = 'Created new template!';
 			}
             else {$response['message'] = "Updated File ID on label {$template_label}";}
-
-            // We need to just create an empty title if this is a new template
-            if (!isset($options_title[$template_label])) {
-                $options_template[$template_label] = '';
-            }
-
-
+			*/
+            // We need to just create all empty fields if this is a new template, but not overwrite if they are set
+			// because sometimes these could be new.
 			$options_sheet_id[$template_label] = $new_file_id;
-			update_option('gdrive_to_posts_templates', $options_template);
-			update_option('gdrive_to_posts_sheet_id', $options_sheet_id);
+			update_option('gdrive_to_posts_template_sheet_id', $options_sheet_id);
+		    $additional_opts = array();
+			foreach ($this->settings_for_templates as $setting_type) {
+				$additional_opts[$setting_type] = get_option( "gdrive_to_posts_template_{$setting_type}", array() );
+				if ( !isset( $additional_opts[$setting_type][$template_label]) ) {
+					$additional_opts[$setting_type][ $template_label ] = '';
+					update_option( "gdrive_to_posts_template_{$setting_type}", $additional_opts[$setting_type] );
+				}
+			}
 
 			$response = array(
 					'success' => 1,
 					'html' => "<option value='{$template_label}'>{$template_label}</option>",
-					'hiddenHTML' => "<input value='' name='gdrive_to_posts_templates[{$template_label}]' id='gdrive_to_posts_templates[{$template_label}]' type='hidden'>",
-					'hiddenTitle' => "<input value='' name='gdrive_to_posts_template_titles[{$template_label}]' id='gdrive_to_posts_template_titles[{$template_label}]' type='hidden'>"
+					'hiddenHTML' => "<input value='' name='gdrive_to_posts_template_body[{$template_label}]' id='gdrive_to_posts_template_body[{$template_label}]' type='hidden'>",
+					'hiddenTitle' => "<input value='' name='gdrive_to_posts_template_title[{$template_label}]' id='gdrive_to_posts_template_title[{$template_label}]' type='hidden'>"
 			);
 
 			$this->end_ajax($response);
@@ -388,7 +408,7 @@ class Gdrive_to_posts_Admin {
 
         $resp = array('success' => 0, 'gclient' => 0, 'gdrive' => 0);
 
-        $options = get_option( 'gdrive_to_posts_settings' );
+        $options = get_option( 'gdrive_to_posts_settings', array() );
         if (!is_array($options) || !($gclient = new Google_Client_Handler($options)) ) {
             $resp['error'] = "Missing Google Drive Connection Settings";
             $this->end_ajax($resp);
@@ -426,9 +446,9 @@ class Gdrive_to_posts_Admin {
 
 
         $sheet_label = esc_attr($_POST['sheet_label']);
-        $options_sheet_id = get_option('gdrive_to_posts_sheet_id');
-        $stored_templates = get_option('gdrive_to_posts_templates');
-        $title_templates = get_option('gdrive_to_posts_template_titles');
+        $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id', array() );
+        $stored_templates = get_option('gdrive_to_posts_template_body', array() );
+        $title_templates = get_option('gdrive_to_posts_template_title', array() );
 
         if (!is_string(($sheet_id = $options_sheet_id[$sheet_label])) || !is_string(($template = $stored_templates[$sheet_label])) || !is_string($title_template = $title_templates[$sheet_label])) {
             $resp['error'] = "Sheet ID {$sheet_id} doesn't work!";
@@ -438,7 +458,7 @@ class Gdrive_to_posts_Admin {
         // Need the google drive connection.
         $gdrive = $this->gdrive_connection();
         // This will parse the csv and make new posts if that's what it should do.
-        $workhorse = new GDrive_To_Posts_Workhorse();
+        $workhorse = new GDrive_to_Posts_Workhorse();
 
         if ($output = $workhorse->parse_file($gdrive, $sheet_id, $template, $title_template)) {
             // We want to see the output here.

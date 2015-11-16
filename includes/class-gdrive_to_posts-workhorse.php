@@ -5,7 +5,7 @@
 
 namespace gdrive_to_posts;
 
-class GDrive_To_Posts_Workhorse
+class GDrive_to_Posts_Workhorse
 {
 
     private $csv;

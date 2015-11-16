@@ -148,7 +148,7 @@ class Google_Client_Handler
             @$csv = is_array($csv) ? $csv['body'] : null;
             if ($csv) {
                 // This will parse the csv and make new posts if that's what it should do.
-                $workhorse = new GDrive_To_Posts_Workhorse();
+                $workhorse = new GDrive_to_Posts_Workhorse();
                 $workhorse->add($csv);
                 // We want to see the output here.
                 $workhorse->run(true);

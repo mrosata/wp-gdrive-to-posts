@@ -132,11 +132,11 @@ class GDrive_To_Posts_Settings {
         }
         ?>
         <select name='gdrive_to_posts_settings[fetch_interval]'>
-            <option value='' <?php selected( $options['fetch_interval']); ?>>Constant</option>
-            <option value='1' <?php selected( $options['fetch_interval'] ); ?>>Every 1 hour</option>
-            <option value='2' <?php selected( $options['fetch_interval']); ?>>Every 2 hours</option>
-            <option value='6' <?php selected( $options['fetch_interval']); ?>>Every 6 Hours</option>
-            <option value='12' <?php selected( $options['fetch_interval'] ); ?>>Every 12 Hours</option>
+            <option value='' <?php selected( $options['fetch_interval']); ?>><?php _e('Choose Approximate Interval', 'gdrive_to_posts') ?></option>
+            <option value='often' <?php selected( $options['fetch_interval'], 'often' ); ?>><?php _e('About 10 Minutes', 'gdrive_to_posts') ?></option>
+            <option value='hourly' <?php selected( $options['fetch_interval'], 'hourly'); ?>><?php _e('Hourly', 'gdrive_to_posts') ?></option>
+            <option value='twicedaily' <?php selected( $options['fetch_interval'], 'twicedaily'); ?>><?php _e('Noon and midnight', 'gdrive_to_posts') ?></option>
+            <option value='daily' <?php selected( $options['fetch_interval'], 'daily'); ?>><?php _e('Daily at midnight', 'gdrive_to_posts') ?></option>
         </select>
         <?php
 
@@ -159,7 +159,7 @@ class GDrive_To_Posts_Settings {
 
 
     public function post_body_template_textarea( $id ) {
-        $options = get_option( 'gdrive_to_posts_templates' );
+        $options = get_option( 'gdrive_to_posts_template_body' );
         if (!is_array($options)) {
             // There is no way this should be called if the base level settings haven't even been created!
             return false;
@@ -180,7 +180,7 @@ class GDrive_To_Posts_Settings {
         echo "<h2 id='gdrive-to-posts-template-label'>{$gdrive_template['label']}</h2>";
         ?>
 
-        <input type='text' name='gdrive_to_posts_templates[<?php echo $id ?>][sheet_id]' value='<?php echo $gdrive_template['sheet_id']; ?>'>
+        <input type='text' name='gdrive_to_posts_template_body[<?php echo $id ?>][sheet_id]' value='<?php echo $gdrive_template['sheet_id']; ?>'>
         <td style="width:15%"></td>
         <?php
     }
@@ -218,11 +218,11 @@ class GDrive_To_Posts_Settings {
      * Title Templates for the posts
      */
     public function template_titles_fields( ) {
-        $options = get_option( 'gdrive_to_posts_template_titles' );
+        $options = get_option( 'gdrive_to_posts_template_title' );
 
         if (!is_array($options)) {
             $options = array();
-            update_option('gdrive_to_posts_template_titles', $options);
+            update_option('gdrive_to_posts_template_title', $options);
         }
 
         $hidden_titles = '';
@@ -231,7 +231,7 @@ class GDrive_To_Posts_Settings {
                 continue;
             }
             $title_template = esc_textarea($title_template);
-            $hidden_titles .= "<input type='hidden' id='gdrive_to_posts_template_titles[{$key}]' name='gdrive_to_posts_template_titles[{$key}]' value='{$title_template}'>";
+            $hidden_titles .= "<input type='hidden' id='gdrive_to_posts_template_title[{$key}]' name='gdrive_to_posts_template_title[{$key}]' value='{$title_template}'>";
         }
 
         // The hidden inputs with titles in them for JavaScript to pull out
@@ -247,11 +247,11 @@ class GDrive_To_Posts_Settings {
      */
     public function templates_fields( ) {
 
-        $options = get_option( 'gdrive_to_posts_templates');
+        $options = get_option( 'gdrive_to_posts_template_body');
 
         if (!is_array($options)) {
             $options = array();
-            update_option('gdrive_to_posts_templates', $options);
+            update_option('gdrive_to_posts_template_body', $options);
         }
 
         ?><div id="gdrive-to-posts-templates"><?php
@@ -267,7 +267,7 @@ class GDrive_To_Posts_Settings {
             echo "\t<option value='{$key}'>{$key}</option>\n";
 
             $template = esc_textarea($template);
-            $hidden_inputs .= "<input type='hidden' id='gdrive_to_posts_templates[{$key}]' name='gdrive_to_posts_templates[{$key}]' value='{$template}'>";
+            $hidden_inputs .= "<input type='hidden' id='gdrive_to_posts_template_body[{$key}]' name='gdrive_to_posts_template_body[{$key}]' value='{$template}'>";
         }
         ?>
         </select></label>
@@ -298,14 +298,47 @@ class GDrive_To_Posts_Settings {
         echo "<div id='gdrive-hidden-templates'>{$hidden_inputs}</div>";
         echo "<table>";
 
+        /**
+         *  Post Title Template
+         */
         echo '<div id="post-title-template"><label>Title Template: </label><input class="form-control" type="text" name="" value=""></div>';
+        /**
+         * Post categories
+         */
+        $this->build_each_template_category_dropdown();
 
-        $editor_id = "gdrive_to_posts_templates-editor";
+
+        $editor_id = "gdrive_to_posts_template_body-editor";
         wp_editor('<h1>GDrive to Posts v0.1.0</h1><ul><li>Create a new template by entering a label and Sheets file ID in the boxes above</li>'
                   . '<li>If you\'ve already created some templates you may switch between them using the dropdown above me!</li></ul>'
                   , $editor_id, array('textarea_name'=> ' ') );
         echo "</table>";
 
+
+    }
+
+    function build_each_template_category_dropdown( ) {
+        $args = array(
+            'show_option_none' => __( 'Select category' ),
+            'hierarchical'     => 1,
+            'orderby'          => 'name',
+            'echo'             => 1,
+        );
+        $options = get_option( 'gdrive_to_posts_template_category', array());
+
+        foreach($options as $label => $val) {
+            $args['selected'] = intval($val);
+            $args['name'] = "gdrive_to_posts_template_category[{$label}]";
+            $args['id'] = "gdrive_to_posts_template_category[{$label}]";
+            ?>
+            <ul id="categories template-categories-select">
+                <li id="categories categories-<?php echo $label ?>" style="display:inline-block;">
+                    <h3><?php _e('Categories:'); ?></h3>
+                    <?php wp_dropdown_categories( $args ); ?>
+                </li>
+            </ul>
+            <?php
+        }
 
     }
 

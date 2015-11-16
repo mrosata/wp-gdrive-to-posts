@@ -24,14 +24,20 @@ namespace gdrive_to_posts;
 class Gdrive_to_posts_Activator {
 
 	/**
-	 * Short Description. (use period)
+	 * Setup chron jobs and certain options setup.
 	 *
-	 * Long Description.
+	 * Chron jobs will all be setup to start at 12:00 midnight the morning of the day that user installs this plugin
+	 * and then depending on user settings their sheets will be fetched and parsed during one of these chron jobs. They
+	 * will also have the choice to use constant which will actually just be every 10 minutes and that will setup to
+	 * fire as a one time event only when the previous job finishes.
 	 *
 	 * @since    1.0.0
 	 */
 	public static function activate() {
-
+		$today_12_am = strtotime(date('Y-m-d'));
+		wp_schedule_event($today_12_am, 'hourly', 'gdrive_to_posts_hourly_hook');
+		wp_schedule_event($today_12_am, 'twicedaily', 'gdrive_to_posts_twicedaily_hook');
+		wp_schedule_event($today_12_am, 'daily', 'gdrive_to_posts_daily_hook');
 	}
 
 }
