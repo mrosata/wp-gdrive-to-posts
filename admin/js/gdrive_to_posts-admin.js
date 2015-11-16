@@ -177,8 +177,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
     }, {
       key: 'setupTemplateTestBtn',
       value: function setupTemplateTestBtn() {
-        var _this2 = this;
-
         var templateTestBtn = $('#sheet-template-tester'),
             data;
         if (!templateTestBtn.length) {
@@ -190,7 +188,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           evt.stopPropagation();
 
           // This button gets sheetID like the fields button (through the select change method).
-          var sheetID = $(_this2).data('sheet-label');
+          var sheetID = $(this).data('sheet-label');
           var data = {
             action: 'gdrive_to_posts_test_template',
             nonce: gdriveToPosts.nonce,
@@ -205,12 +203,15 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             complete: function complete(resp) {
               var output = '';
               if (!resp || (typeof resp === 'undefined' ? 'undefined' : _typeof(resp)) !== "object" || _typeof(resp.responseJSON) !== "object") {
-                output += '<h3>Status of Google Client:  NOT CONNECTED';
-                output += '<h3>Status of GDrive Service: NOT CONNECTED';
+                output += '<h3>The server didn\'t parse your template</h3>';
               }
-              var elem = $('.test-template-results');
-              output += '<br><span>Status of Google Client: </span><span class="' + (resp.responseJSON.gclient == 1 ? 'pass">' : 'fail">NOT ') + 'CONNECTED</span>';
-              output += '<br><span>Status of GDrive Service:</span><span class="' + (resp.responseJSON.gdrive == 1 ? 'pass">' : 'fail">NOT ') + 'CONNECTED</span>';
+              var elem = $('.test-preview-results');
+              resp = resp.responseJSON;
+              if (resp.success == 1) {
+                output += resp.output;
+              } else {
+                output += "<br><span>Could not parse your template! Please check it for errors.<\/span>";
+              }
 
               // show the results in html.
               if (elem.length) {
@@ -252,6 +253,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
       value: function templateSelect() {
         var $selectBox = $('select[name="choose-editor-template"]'),
             templateOptionLabel = 'gdrive_to_posts_templates',
+            titlesOptionLabel = 'gdrive_to_posts_template_titles',
             fetchFieldsBtn = $('#get-gdrive-sheet-field-names, #sheet-template-tester'),
             fieldsExplaination = $('.gdrive-template-fields-explanation'),
             outputElem = $('.gdrive-template-fields-listings');
@@ -263,8 +265,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           outputElem.empty();
           var selectedOption = $(this).val(),
               editor = { $: $('#' + templateOptionLabel + '-editor') },
+              title = { $: $('#post-title-template input') },
               hiddenTemplateFields = $('#gdrive-hidden-templates'),
-              desiredTemplate = {};
+              hiddenTitleFields = $('#hidden-title-templates'),
+              desiredTemplate = {},
+              desiredTitle = {};
 
           if (!editor.$.length || !hiddenTemplateFields.length) {
             return false;
@@ -272,10 +277,16 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           // We need the name of editor to be able to change it out.
           editor.name = editor.$.prop('name');
           editor.content = editor.$.val();
+          // This is the editing for the title fields.
+          title.content = title.$.prop('name');
+          title.content = title.$.val();
 
           if (!selectedOption) {
             hideLastActiveTemplate();
+            // empty the text editor
             updateTextEditor('');
+            // empty the title val
+            title.$.val('');
             fetchFieldsBtn.data('sheet-label', '').hide();
             console.log('changing content in the editor to nothing.');
             return false;
@@ -285,14 +296,19 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
           desiredTemplate.name = templateOptionLabel + '[' + selectedOption + ']';
           desiredTemplate.$ = hiddenTemplateFields.find('input[name="' + desiredTemplate.name + '"]');
-          console.log('found desired template', desiredTemplate.name);
           desiredTemplate.content = desiredTemplate.$.length ? desiredTemplate.$.val() : '';
+          desiredTitle.name = titlesOptionLabel + '[' + selectedOption + ']';
+          desiredTitle.$ = hiddenTitleFields.find('input[name="' + desiredTitle.name + '"]');
+          console.log('found desired template', desiredTemplate.name, desiredTitle.name);
+          desiredTitle.content = desiredTitle.$.length ? desiredTitle.$.val() : '';
 
           // We need to make sure that the content from the current editor is hidden away correctly so that the
           // user can change back to it and also so that when the form is submitted it changes properly.
           hideLastActiveTemplate();
+          if (desiredTitle.$.length) {
+            title.$.val(desiredTitle.content);
+          }
           if (desiredTemplate.$.length) {
-            //desiredTemplate.$.remove();
             // now that the content from the editor has been saved to a hidden input, we can
             updateTextEditor(desiredTemplate.content);
           } else {
@@ -302,6 +318,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           }
           editor.$.prop('name', desiredTemplate.name);
           editor.$.attr('name', desiredTemplate.name);
+          title.$.prop('name', desiredTitle.name);
+          title.$.attr('name', desiredTitle.name);
           updateTextEditor(desiredTemplate.content);
           /**
            * Utility function to set content of editor
@@ -345,7 +363,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
     }, {
       key: 'setupBtn',
       value: function setupBtn() {
-        var _this3 = this;
+        var _this2 = this;
 
         var $addNewButton = $('#gdriveToPostsAddNewTemplateBtn');
 
@@ -354,7 +372,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             var fileID = $('input[name="gdrive-to-posts-template-sheet-id"]').val(),
                 tempLabel = $('input[name="gdrive-to-posts-template-label"]').val();
             if (!fileID || !tempLabel) {
-              _this3.displayModal('Enter a Google Sheets File ID and Template Label please!', 'error');
+              _this2.displayModal('Enter a Google Sheets File ID and Template Label please!', 'error');
               return false;
             }
             // Disable the button
@@ -373,14 +391,16 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
               dataType: 'json',
               data: data,
               success: function success(resp) {
-                if (resp && resp.success == 1 && resp.html && resp.hiddenHTML) {
+                if (resp && resp.success == 1 && resp.html && resp.hiddenTitle && resp.hiddenHTML) {
                   var templateDropdown = $('select[name="choose-editor-template"]'),
-                      templateHiddenInputs = $('#gdrive-hidden-templates');
+                      templateHiddenInputs = $('#gdrive-hidden-templates'),
+                      templateHiddenTitles = $('#gdrive-hidden-titles');
                   if (templateDropdown.length && !!resp.html) {
                     templateDropdown.append(resp.html);
                   }
                   if (templateHiddenInputs.length && !!resp.hiddenHTML) {
                     templateHiddenInputs.append(resp.hiddenHTML);
+                    templateHiddenTitles.append(resp.hiddenTitle);
                   }
                 }
               },

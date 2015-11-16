@@ -137,7 +137,16 @@ class Gdrive_to_posts_Admin {
 				$gdrive_post_posts_section
 		);
 
+        // The title templates
+		add_settings_field(
+				'template_titles',
+				__( 'Google Sheets to Post Templates: ', 'gdrive_to_posts' ),
+				array( $this->settings_page, 'template_titles_fields'),
+				$gdrive_api_option_group,
+				$gdrive_post_posts_section
+		);
 
+        // The body templates
 		add_settings_field(
 				'templates',
 				__( 'Google Sheets to Post Templates: ', 'gdrive_to_posts' ),
@@ -148,6 +157,7 @@ class Gdrive_to_posts_Admin {
 
 
 		//register_setting( $gdrive_template_option_group, 'gdrive_to_posts_sheet_id' );
+		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_titles' );
 		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_templates' );
 		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_settings' );
 
@@ -318,7 +328,7 @@ class Gdrive_to_posts_Admin {
 		}
 
 		// The file id is Google Sheet file id and becomes options[n][file_id] = $file_id
-		$new_file_id = esc_url($_POST['new_sheet_id'], FILTER_SANITIZE_SPECIAL_CHARS);
+		$new_file_id = filter_var($_POST['new_sheet_id']);
 		// The file key is just a key to use as a label becomes options[n][label] = $template_label
 		$template_label = esc_attr($_POST['new_template_label']);
 		$template_label = str_replace(' ', '-', $template_label);
@@ -326,6 +336,7 @@ class Gdrive_to_posts_Admin {
 		if (!!$new_file_id && !!$template_label) {
 			$options_template = get_option('gdrive_to_posts_templates');
 			$options_sheet_id = get_option('gdrive_to_posts_sheet_id', array());
+            $options_title = get_option('gdrive_to_posts_template_titles', array());
 
 
             // Only set the template text on labels that are not yet created.
@@ -335,6 +346,12 @@ class Gdrive_to_posts_Admin {
 			}
             else {$response['message'] = "Updated File ID on label {$template_label}";}
 
+            // We need to just create an empty title if this is a new template
+            if (!isset($options_title[$template_label])) {
+                $options_template[$template_label] = '';
+            }
+
+
 			$options_sheet_id[$template_label] = $new_file_id;
 			update_option('gdrive_to_posts_templates', $options_template);
 			update_option('gdrive_to_posts_sheet_id', $options_sheet_id);
@@ -342,7 +359,8 @@ class Gdrive_to_posts_Admin {
 			$response = array(
 					'success' => 1,
 					'html' => "<option value='{$template_label}'>{$template_label}</option>",
-					'hiddenHTML' => "<input value='' name='gdrive_to_posts_templates[{$template_label}]' id='gdrive_to_posts_templates[{$template_label}]' type='hidden'>"
+					'hiddenHTML' => "<input value='' name='gdrive_to_posts_templates[{$template_label}]' id='gdrive_to_posts_templates[{$template_label}]' type='hidden'>",
+					'hiddenTitle' => "<input value='' name='gdrive_to_posts_template_titles[{$template_label}]' id='gdrive_to_posts_template_titles[{$template_label}]' type='hidden'>"
 			);
 
 			$this->end_ajax($response);
@@ -406,9 +424,13 @@ class Gdrive_to_posts_Admin {
             $this->end_ajax();
         }
 
-        $options_sheet_id = get_option('gdrive_to_posts_sheet_id');
+
         $sheet_label = esc_attr($_POST['sheet_label']);
-        if (!is_string(($sheet_id = $options_sheet_id[$sheet_label]))) {
+        $options_sheet_id = get_option('gdrive_to_posts_sheet_id');
+        $stored_templates = get_option('gdrive_to_posts_templates');
+        $title_templates = get_option('gdrive_to_posts_template_titles');
+
+        if (!is_string(($sheet_id = $options_sheet_id[$sheet_label])) || !is_string(($template = $stored_templates[$sheet_label])) || !is_string($title_template = $title_templates[$sheet_label])) {
             $resp['error'] = "Sheet ID {$sheet_id} doesn't work!";
             $this->end_ajax();
         }
@@ -418,9 +440,10 @@ class Gdrive_to_posts_Admin {
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_To_Posts_Workhorse();
 
-        if ($output = $workhorse->parse_file($gdrive, $sheet_id)) {
+        if ($output = $workhorse->parse_file($gdrive, $sheet_id, $template, $title_template)) {
             // We want to see the output here.
-            $this->end_ajax(array('success'=>0, 'output'=>$output));
+
+            $this->end_ajax(array('success'=>1, 'output'=>$output));
         }
         else {
             if (!$gdrive) {

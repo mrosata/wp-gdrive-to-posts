@@ -146,7 +146,7 @@
         return false;
       }
 
-      templateTestBtn.on('click.gdrive-to-posts', (evt) => {
+      templateTestBtn.on('click.gdrive-to-posts', function(evt) {
         evt.preventDefault();
         evt.stopPropagation();
 
@@ -166,12 +166,15 @@
           complete (resp) {
             var output = '';
             if (!resp || typeof resp !== "object" || typeof resp.responseJSON !== "object") {
-              output += '<h3>Status of Google Client:  NOT CONNECTED';
-              output += '<h3>Status of GDrive Service: NOT CONNECTED';
+              output += '<h3>The server didn\'t parse your template</h3>';
             }
-            var elem = $('.test-template-results');
-            output += `<br><span>Status of Google Client: <\/span><span class="${( resp.responseJSON.gclient == 1 ? 'pass">' : 'fail">NOT ' )}CONNECTED<\/span>`;
-            output += `<br><span>Status of GDrive Service:<\/span><span class="${( resp.responseJSON.gdrive == 1  ? 'pass">' : 'fail">NOT ' )}CONNECTED<\/span>`;
+            var elem = $('.test-preview-results');
+            resp = resp.responseJSON;
+            if (resp.success == 1) {
+              output += resp.output;
+            } else {
+              output += "<br><span>Could not parse your template! Please check it for errors.<\/span>"
+            }
 
             // show the results in html.
             if (elem.length) {
@@ -208,6 +211,7 @@
     templateSelect () {
       var $selectBox = $('select[name="choose-editor-template"]'),
         templateOptionLabel = 'gdrive_to_posts_templates',
+        titlesOptionLabel = 'gdrive_to_posts_template_titles',
         fetchFieldsBtn = $('#get-gdrive-sheet-field-names, #sheet-template-tester'),
         fieldsExplaination = $('.gdrive-template-fields-explanation'),
         outputElem = $('.gdrive-template-fields-listings');
@@ -219,19 +223,28 @@
           outputElem.empty();
         var selectedOption = $(this).val(),
           editor = {$: $(`#${templateOptionLabel}-editor`)},
+          title = {$: $('#post-title-template input')},
           hiddenTemplateFields = $('#gdrive-hidden-templates'),
-          desiredTemplate = {};
+          hiddenTitleFields = $('#hidden-title-templates'),
+          desiredTemplate = {},
+          desiredTitle = {};
 
         if (!editor.$.length || !hiddenTemplateFields.length) {return false;}
         // We need the name of editor to be able to change it out.
         editor.name = editor.$.prop('name');
         editor.content = editor.$.val();
+        // This is the editing for the title fields.
+        title.content = title.$.prop('name');
+        title.content = title.$.val();
 
 
 
         if (!selectedOption) {
           hideLastActiveTemplate();
+          // empty the text editor
           updateTextEditor('');
+          // empty the title val
+          title.$.val('');
           fetchFieldsBtn.data('sheet-label', '').hide();
           console.log('changing content in the editor to nothing.');
           return false;
@@ -242,14 +255,19 @@
 
         desiredTemplate.name = `${templateOptionLabel}[${selectedOption}]`;
         desiredTemplate.$ = hiddenTemplateFields.find(`input[name="${desiredTemplate.name}"]`);
-        console.log('found desired template', desiredTemplate.name);
-        desiredTemplate.content = desiredTemplate.$.length? desiredTemplate.$.val() : '';
+        desiredTemplate.content = desiredTemplate.$.length ? desiredTemplate.$.val() : '';
+        desiredTitle.name = `${titlesOptionLabel}[${selectedOption}]`;
+        desiredTitle.$ = hiddenTitleFields.find(`input[name="${desiredTitle.name}"]`);
+        console.log('found desired template', desiredTemplate.name, desiredTitle.name);
+        desiredTitle.content = desiredTitle.$.length ? desiredTitle.$.val() : '';
 
         // We need to make sure that the content from the current editor is hidden away correctly so that the
         // user can change back to it and also so that when the form is submitted it changes properly.
         hideLastActiveTemplate();
+        if (desiredTitle.$.length) {
+          title.$.val(desiredTitle.content);
+        }
         if (desiredTemplate.$.length) {
-          //desiredTemplate.$.remove();
           // now that the content from the editor has been saved to a hidden input, we can
           updateTextEditor(desiredTemplate.content);
         }
@@ -260,6 +278,8 @@
         }
         editor.$.prop('name', desiredTemplate.name);
         editor.$.attr('name', desiredTemplate.name);
+        title.$.prop('name', desiredTitle.name);
+        title.$.attr('name', desiredTitle.name);
         updateTextEditor(desiredTemplate.content);
         /**
          * Utility function to set content of editor
@@ -332,14 +352,16 @@
             dataType: 'json',
             data: data,
             success: function (resp) {
-              if (resp && resp.success == 1 && resp.html && resp.hiddenHTML) {
+              if (resp && resp.success == 1 && resp.html && resp.hiddenTitle && resp.hiddenHTML) {
                 var templateDropdown = $('select[name="choose-editor-template"]'),
-                  templateHiddenInputs = $('#gdrive-hidden-templates');
+                  templateHiddenInputs = $('#gdrive-hidden-templates'),
+                  templateHiddenTitles = $('#gdrive-hidden-titles');
                 if (templateDropdown.length && !!resp.html) {
                   templateDropdown.append(resp.html);
                 }
                 if (templateHiddenInputs.length && !!resp.hiddenHTML) {
                   templateHiddenInputs.append(resp.hiddenHTML);
+                  templateHiddenTitles.append(resp.hiddenTitle);
                 }
               }
             },

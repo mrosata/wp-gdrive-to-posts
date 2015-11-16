@@ -215,6 +215,32 @@ class GDrive_To_Posts_Settings {
 
 
     /**
+     * Title Templates for the posts
+     */
+    public function template_titles_fields( ) {
+        $options = get_option( 'gdrive_to_posts_template_titles' );
+
+        if (!is_array($options)) {
+            $options = array();
+            update_option('gdrive_to_posts_template_titles', $options);
+        }
+
+        $hidden_titles = '';
+        foreach ($options as $key => $title_template) {
+            if (!is_string($title_template)) {
+                continue;
+            }
+            $title_template = esc_textarea($title_template);
+            $hidden_titles .= "<input type='hidden' id='gdrive_to_posts_template_titles[{$key}]' name='gdrive_to_posts_template_titles[{$key}]' value='{$title_template}'>";
+        }
+
+        // The hidden inputs with titles in them for JavaScript to pull out
+        echo "<div id='hidden-title-templates'>{$hidden_titles}</div>";
+    }
+
+
+
+    /**
      * Each of the different types of posts which you may want to build have to have a file id as
      * well as a template so they take up 2 fields and will be looped for how ever many types of
      * posts the user sets up.
@@ -271,6 +297,9 @@ class GDrive_To_Posts_Settings {
         // to edit the template body and then when the 'save changes' button is pushed they will all update.
         echo "<div id='gdrive-hidden-templates'>{$hidden_inputs}</div>";
         echo "<table>";
+
+        echo '<div id="post-title-template"><label>Title Template: </label><input class="form-control" type="text" name="" value=""></div>';
+
         $editor_id = "gdrive_to_posts_templates-editor";
         wp_editor('<h1>GDrive to Posts v0.1.0</h1><ul><li>Create a new template by entering a label and Sheets file ID in the boxes above</li>'
                   . '<li>If you\'ve already created some templates you may switch between them using the dropdown above me!</li></ul>'
