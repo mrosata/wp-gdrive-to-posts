@@ -193,7 +193,7 @@ class GDrive_To_Posts_Settings {
 
             <label for="gdrive-to-posts-new-file-id">
                 <?php _e(' Google Sheets file ID: ', 'gdrive_to_posts') ?></label>
-            <input type="text" name="gdrive-to-posts-template-sheet-id" value="" class="form-control" placeholder="Google Sheets File ID">
+            <input type="text" name="template-sheet-id" value="" class="form-control" placeholder="Google Sheets File ID">
 
             <br>
         </div>
@@ -202,7 +202,7 @@ class GDrive_To_Posts_Settings {
 
             <label for="gdrive-to-posts-template-label">
                 <?php _e('Choose a label for new template', 'gdrive_to_posts') ?></label>
-            <input type="text" name="gdrive-to-posts-template-label" class="form-control" value="" placeholder="label for template"><br>
+            <input type="text" name="template-label" class="form-control" value="" placeholder="label for template"><br>
 
         </div>
 

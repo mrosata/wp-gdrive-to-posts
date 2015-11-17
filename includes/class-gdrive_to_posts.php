@@ -233,21 +233,18 @@ class Gdrive_to_posts {
 			switch($timing_options['fetch_interval']) {
 				case 'hourly':
 					$this->loader->add_action( 'gdrive_to_posts_hourly_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
-                    echo "<h2>added an hourly hook!</h2>";
 					break;
 				case 'twicedaily':
 					$this->loader->add_action( 'gdrive_to_posts_twicedaily_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
-                    echo "<h2>added an 2 time daily hook!</h2>";
+                    echo "<h2>-------------------------------------------------------------added an 2 time daily hook!</h2>";
                     break;
 				case 'daily':
 					$this->loader->add_action( 'gdrive_to_posts_daily_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
-                    echo "<h2>added an daoily hook!</h2>";
                     break;
 				case 'often':
 					// Check if it is already schedualed
 					if (!(wp_next_scheduled( 'gdrive_to_posts_often_hook'))) {
 						wp_schedule_single_event(strtotime('+ 1 minute'), 'gdrive_to_posts_often_hook');
-                        echo "<h1>&nsbp;--&nsbp;---&nsbp;---&nsbp;----&nsbp;------&nsbp;SETUP U DAMN QUIK HOOK!</h1>";
 					}
 					$this->loader->add_action( 'gdrive_to_posts_often_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
                     break;

@@ -41,7 +41,7 @@ class Gdrive_to_posts_Admin {
 			'author' => 1,
 			'data' => '',
 			'sheet_id' => '',
-			'last_line' => 1,
+			'csv_last_line' => 1,
 			'title' => '',
 			'body' => ''
 	);
@@ -148,14 +148,7 @@ class Gdrive_to_posts_Admin {
 				$gdrive_post_posts_section
 		);
 
-        /* The title templates
-		add_settings_field(
-				'template_titles',
-				__( 'Google Sheets to Post Templates: ', 'gdrive_to_posts' ),
-				array( $this->settings_page, 'template_titles_fields'),
-				$gdrive_api_option_group,
-				$gdrive_post_posts_section
-		);*/
+
 
         // The body templates
 		add_settings_field(
@@ -168,7 +161,7 @@ class Gdrive_to_posts_Admin {
 
 
 		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_sheet_id' );
-		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_csv_last_line' );
+		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_csv_last_line' );
 
 		/**
 		 * Even though WP allows for multi arrays in the settings, if we store options that way then
@@ -294,7 +287,7 @@ class Gdrive_to_posts_Admin {
 	 */
 	public function fetch_sheet_fields() {
 		// For now I think we will only allow new templates to be added using Ajax
-		if (!defined('DOING_AJAX') || !DOING_AJAX || !isset($_POST['sheet_label'])) {
+		if (!defined('DOING_AJAX') || !DOING_AJAX || !all_set($_POST['sheet_label'])) {
 			$this->end_ajax();
 		}
 		if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
@@ -303,8 +296,11 @@ class Gdrive_to_posts_Admin {
 
 		$options_sheet_id = get_option('gdrive_to_posts_template_sheet_id', array());
 		$sheet_label = esc_attr($_POST['sheet_label']);
-		if (!is_string(($sheet_id = $options_sheet_id[$sheet_label]))) {
-			$this->end_ajax();
+		if (!all_set($options_sheet_id[$sheet_label]) || !is_string(($sheet_id = $options_sheet_id[$sheet_label]))) {
+			$this->end_ajax(array(
+                'success' => 0,
+                'error' => "Unable to locate Sheet ID for {$sheet_label}"
+            ));
 		}
 
 		// Need the google drive connection.
@@ -338,7 +334,7 @@ class Gdrive_to_posts_Admin {
      */
 	public function add_new_template() {
 		// For now I think we will only allow new templates to be added using Ajax
-		if (!defined('DOING_AJAX') || !DOING_AJAX || !isset($_POST['new_sheet_id']) || !isset($_POST['new_template_label'])) {
+		if (!defined('DOING_AJAX') || !DOING_AJAX || !all_set($_POST['new_sheet_id'], $_POST['new_template_label'])) {
 			$this->end_ajax();
 		}
 		if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
@@ -355,8 +351,7 @@ class Gdrive_to_posts_Admin {
 
             $response = array(
                 'html' => "<option value='{$template_label}'>{$template_label}</option>",
-                'hiddenHTML' => "<input value='' name='gdrive_to_posts_template_body[{$template_label}]' id='gdrive_to_posts_template_body[{$template_label}]' type='hidden'>",
-                'hiddenTitle' => "<input value='' name='gdrive_to_posts_template_title[{$template_label}]' id='gdrive_to_posts_template_title[{$template_label}]' type='hidden'>"
+                'hiddenHTML' => "<input value='' name='gdrive_to_posts_template_body[{$template_label}]' id='gdrive_to_posts_template_body[{$template_label}]' type='hidden'>"
             );
 
 			//$options_template = get_option('gdrive_to_posts_template_body');
@@ -367,7 +362,7 @@ class Gdrive_to_posts_Admin {
 		    $additional_opts = array();
 			foreach ($this->settings_for_templates as $setting => $default) {
 				$additional_opts[$setting] = get_option( "gdrive_to_posts_template_{$setting}", array() );
-				if ( !isset( $additional_opts[$setting][$template_label]) ) {
+				if ( !all_set( $additional_opts[$setting][$template_label]) ) {
 					$additional_opts[$setting][ $template_label ] = $default;
 					update_option( "gdrive_to_posts_template_{$setting}", $additional_opts[$setting] );
 				} else {
@@ -431,7 +426,7 @@ class Gdrive_to_posts_Admin {
     public function test_template() {
 
         $resp = array('success'=>0);
-        if (!defined('DOING_AJAX') || !DOING_AJAX || !isset($_POST['sheet_label'])) {
+        if (!defined('DOING_AJAX') || !DOING_AJAX || !all_set($_POST['sheet_label']) || !current_user_can('update_core')) {
             $this->end_ajax();
         }
         if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
@@ -443,8 +438,21 @@ class Gdrive_to_posts_Admin {
         $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
         $stored_templates = get_option('gdrive_to_posts_template_body' );
         $title_templates = get_option('gdrive_to_posts_template_title' );
+        $author_templates = get_option('gdrive_to_posts_template_author' );
+        $tags_templates = get_option('gdrive_to_posts_template_tags' );
+        $category_templates = get_option('gdrive_to_posts_template_category' );
+        $stored_last_lines = get_option('gdrive_to_posts_template_csv_last_line' );
 
-        if (!is_string(($sheet_id = $options_sheet_id[$sheet_label])) || !is_string(($template = $stored_templates[$sheet_label])) || !is_string($title_template = $title_templates[$sheet_label])) {
+
+        $sheet_id = $options_sheet_id[$sheet_label];
+        $template = $stored_templates[$sheet_label];
+        $title_template = $title_templates[$sheet_label];
+        $author = $author_templates[$sheet_label];
+        $tags = $tags_templates[$sheet_label];
+        $category = $category_templates[$sheet_label];
+        $last_line = $stored_last_lines[$sheet_label];
+
+        if ( !is_string($sheet_id) || !is_string($template) || !is_string($title_template) || !all_set($last_line)) {
             $resp['error'] = "Sheet ID {$sheet_id} doesn't work!";
             $this->end_ajax();
         }
@@ -454,7 +462,7 @@ class Gdrive_to_posts_Admin {
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
 
-        if ($output = $workhorse->parse_file($gdrive, $sheet_id, $template, $title_template)) {
+        if ($output = $workhorse->parse_file($gdrive, $sheet_id, $template, $title_template, $author, $tags, $category, $last_line, 5)) {
             // We want to see the output here.
 
             $this->end_ajax(array('success'=>1, 'output'=>$output));

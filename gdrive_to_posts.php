@@ -74,4 +74,14 @@ function run_gdrive_to_posts() {
 	$plugin->run();
 
 }
+
+function all_set() {
+	$fields = func_get_args();
+	foreach($fields as $field) {
+		if (!isset($field) || empty($field)) {
+			return false;
+		}
+	}
+	return true;
+}
 run_gdrive_to_posts();

@@ -8,7 +8,6 @@
  * Project: wp-dev
  */
 
-
 (function( $ ) {
   'use strict';
 
@@ -387,8 +386,8 @@
 
       if ($addNewButton.length) {
         $addNewButton.on('click', (evt) => {
-          let fileID = $('input[name="gdrive-to-posts-template-sheet-id"]').val(),
-            tempLabel = $('input[name="gdrive-to-posts-template-label"]').val();
+          let fileID = $('input[name="template-sheet-id"]').val(),
+            tempLabel = $('input[name="template-label"]').val();
           if (!fileID  || !tempLabel) {
             this.displayModal('Enter a Google Sheets File ID and Template Label please!', 'error');
             return false;
@@ -411,21 +410,21 @@
             dataType: 'json',
             data: data,
             success: function (resp) {
-              if (resp && resp.success == 1 && resp.html && resp.hiddenTitle && resp.hiddenHTML) {
+              if (resp && resp.success == 1 && resp.html && resp.hiddenHTML) {
                 var templateDropdown = $('select[name="choose-editor-template"]'),
-                  templateHiddenInputs = $('#gdrive-hidden-templates'),
-                  templateHiddenTitles = $('#gdrive-hidden-titles');
+                  templateHiddenInputs = $('#gdrive-hidden-templates');
+                // Add new label to the dropdown menu
                 if (templateDropdown.length && !!resp.html) {
                   templateDropdown.append(resp.html);
                 }
+                // Add new template body input to the collection of hidden inputs
                 if (templateHiddenInputs.length && !!resp.hiddenHTML) {
                   templateHiddenInputs.append(resp.hiddenHTML);
-                  templateHiddenTitles.append(resp.hiddenTitle);
                 }
               }
 
-              $('input[name="gdrive-to-posts-template-sheet-id"]').val('');
-              $('input[name="gdrive-to-posts-template-label"]').val('');
+              $('input[name="template-sheet-id"]').val('');
+              $('input[name="template-label"]').val('');
             },
             complete: (error) => {
               if (!!window.gdriveToPosts._gdriveErrorsOn) {
