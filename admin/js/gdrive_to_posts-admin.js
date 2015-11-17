@@ -190,7 +190,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           // This button gets sheetID like the fields button (through the select change method).
           var sheetID = $(this).data('sheet-label');
           var data = {
-            action: 'gdrive_to_posts_test_template',
+            action: 'gdrive_to_posts_parse_through_template',
             nonce: gdriveToPosts.nonce,
             sheet_label: sheetID
           };
@@ -281,6 +281,12 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           title.content = title.$.prop('name');
           title.content = title.$.val();
 
+          // show the dropdown categories option for this template
+          showActiveCategoryDropDown(selectedOption);
+          showActiveTemplateTags(selectedOption);
+          showActiveTemplateAuthor(selectedOption);
+          showActiveTemplateTitle(selectedOption);
+
           if (!selectedOption) {
             hideLastActiveTemplate();
             // empty the text editor
@@ -305,6 +311,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           // We need to make sure that the content from the current editor is hidden away correctly so that the
           // user can change back to it and also so that when the form is submitted it changes properly.
           hideLastActiveTemplate();
+
           if (desiredTitle.$.length) {
             title.$.val(desiredTitle.content);
           }
@@ -358,6 +365,59 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
               }
             }
           }
+          function showActiveCategoryDropDown(label) {
+            var dropdownSelector = $('.template-category.template-category-' + label),
+                allSelectors = $('.template-category');
+            if (allSelectors.length) {
+              allSelectors.hide();
+              if (label && dropdownSelector.length) {
+                dropdownSelector.show();
+              }
+            }
+          }
+
+          /**
+           * Show the template tags input for the current template
+           */
+          function showActiveTemplateTags(label) {
+            var tagsInputWrapper = $('.template-tags.template-' + label),
+                allTagsInputs = $('.template-tags');
+            if (allTagsInputs.length) {
+              allTagsInputs.hide();
+              if (label && tagsInputWrapper.length) {
+                tagsInputWrapper.show();
+              }
+            }
+          }
+
+          /**
+           * Show the template tags input for the current template
+           */
+          function showActiveTemplateTitle(label) {
+            var titelInputWrapper = $('.template-title.template-' + label),
+                allTitelInputs = $('.template-title');
+            if (allTitelInputs.length) {
+              allTitelInputs.hide();
+              if (label && titelInputWrapper.length) {
+                titelInputWrapper.show();
+              }
+            }
+          }
+
+          /**
+           * Show the author input for the current template
+           * @param label
+           */
+          function showActiveTemplateAuthor(label) {
+            var authorInputWrapper = $('.template-author.template-' + label),
+                allAuthorInputs = $('.template-author');
+            if (allAuthorInputs.length) {
+              allAuthorInputs.hide();
+              if (label && authorInputWrapper.length) {
+                authorInputWrapper.show();
+              }
+            }
+          }
         }); // End selectbox.on('change');
       }
     }, {
@@ -403,6 +463,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                     templateHiddenTitles.append(resp.hiddenTitle);
                   }
                 }
+
+                $('input[name="gdrive-to-posts-template-sheet-id"]').val('');
+                $('input[name="gdrive-to-posts-template-label"]').val('');
               },
               complete: function complete(error) {
                 if (!!window.gdriveToPosts._gdriveErrorsOn) {

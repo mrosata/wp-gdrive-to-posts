@@ -60,6 +60,7 @@ class Google_Client_Handler
 
                 $private_key = file_get_contents(plugin_dir_path( dirname( __FILE__ ) ) . $key_file);
                 $scopes = array(
+                    'https://www.googleapis.com/auth/drive',
                     'https://www.googleapis.com/auth/sqlservice.admin',
                     'https://www.googleapis.com/auth/drive.readonly',
                     'https://www.googleapis.com/auth/drive.photos.readonly',

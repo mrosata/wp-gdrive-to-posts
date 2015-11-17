@@ -41,6 +41,18 @@ class Gdrive_to_posts {
 	protected $loader;
 
 	/**
+	 * The admin hooks and functionality object
+	 * @var Gdrive_to_posts_Admin
+	 */
+	protected $plugin_admin;
+
+	/**
+	 * The public hooks and functionality object
+	 * @var Gdrive_to_posts_Admin
+	 */
+	protected $plugin_public;
+
+	/**
 	 * The unique identifier of this plugin.
 	 *
 	 * @since    1.0.0
@@ -74,8 +86,11 @@ class Gdrive_to_posts {
 
 		$this->load_dependencies();
 		$this->set_locale();
+
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
+
+        $this->define_chron_jobs();
 
 	}
 
@@ -139,6 +154,10 @@ class Gdrive_to_posts {
 
 		$this->loader = new Gdrive_to_posts_Loader();
 
+		$this->plugin_admin = new Gdrive_to_posts_Admin( $this->get_plugin_name(), $this->get_version() );
+
+		$this->plugin_public = new Gdrive_to_posts_Public( $this->get_plugin_name(), $this->get_version() );
+
 	}
 
 	/**
@@ -168,7 +187,7 @@ class Gdrive_to_posts {
 	 */
 	private function define_admin_hooks() {
 
-		$plugin_admin = new Gdrive_to_posts_Admin( $this->get_plugin_name(), $this->get_version() );
+		$plugin_admin = $this->plugin_admin;
 
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
@@ -180,7 +199,8 @@ class Gdrive_to_posts {
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_add_new_template', $plugin_admin, 'add_new_template' );
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_fetch_sheet_fields', $plugin_admin, 'fetch_sheet_fields' );
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_test_gclient', $plugin_admin, 'test_gclient' );
-		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_test_template', $plugin_admin, 'test_template' );
+		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_parse_through_template', $plugin_admin, 'parse_through_template' );
+
 	}
 
 	/**
@@ -190,17 +210,54 @@ class Gdrive_to_posts {
 	 * @since    1.0.0
 	 * @access   private
 	 */
-	private function define_public_hooks() {
+	private function define_public_hooks()
+    {
 
-		$plugin_public = new Gdrive_to_posts_Public( $this->get_plugin_name(), $this->get_version() );
+        $plugin_public = $this->plugin_public;
 
-		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
-		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
+        $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_styles');
+        $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_scripts');
 
-		//$this->loader->add_action( 'init', $plugin_public, 'gdrive_connection_init');
-		//$this->loader->add_action( 'pre_get_posts', $plugin_public, 'gdrive_connection_init');
+    }
+
+    /**
+     * Sets up the hooks to handle the chron jobs
+     */
+    private function define_chron_jobs() {
+
+		// TODO: Need to move the GDrive functionality out of admin object so that public plugin can share an object with admin and we won't have to be using the admin object here in the define public hooks section.
+		// Setup the timing functions.
+		$timing_options = get_option('gdrive_to_posts_settings');
+		if (is_array($timing_options) && isset($timing_options['fetch_interval'])) {
+			// TODO: Maybe in the future the update interval should be template based not account based?
+			switch($timing_options['fetch_interval']) {
+				case 'hourly':
+					$this->loader->add_action( 'gdrive_to_posts_hourly_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
+                    echo "<h2>added an hourly hook!</h2>";
+					break;
+				case 'twicedaily':
+					$this->loader->add_action( 'gdrive_to_posts_twicedaily_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
+                    echo "<h2>added an 2 time daily hook!</h2>";
+                    break;
+				case 'daily':
+					$this->loader->add_action( 'gdrive_to_posts_daily_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
+                    echo "<h2>added an daoily hook!</h2>";
+                    break;
+				case 'often':
+					// Check if it is already schedualed
+					if (!(wp_next_scheduled( 'gdrive_to_posts_often_hook'))) {
+						wp_schedule_single_event(strtotime('+ 1 minute'), 'gdrive_to_posts_often_hook');
+                        echo "<h1>&nsbp;--&nsbp;---&nsbp;---&nsbp;----&nsbp;------&nsbp;SETUP U DAMN QUIK HOOK!</h1>";
+					}
+					$this->loader->add_action( 'gdrive_to_posts_often_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
+                    break;
+				default:
+					break;
+			}
+		}
 
 	}
+
 
 	/**
 	 * Run the loader to execute all of the hooks with WordPress.

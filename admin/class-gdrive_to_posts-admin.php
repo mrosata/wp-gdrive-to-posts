@@ -35,7 +35,17 @@ class Gdrive_to_posts_Admin {
 
 	private $gdrive;
 	private $gclient;
-	private $settings_for_templates = array('category', 'tags', 'author', 'data', 'sheet_id', 'last_line', 'title', 'body');
+	private $settings_for_templates = array(
+			'category' => 0,
+			'tags' => '',
+			'author' => 1,
+			'data' => '',
+			'sheet_id' => '',
+			'last_line' => 1,
+			'title' => '',
+			'body' => ''
+	);
+
 
 	/**
 	 * Initialize the class and set its properties.
@@ -157,27 +167,16 @@ class Gdrive_to_posts_Admin {
 		);
 
 
-		//register_setting( $gdrive_template_option_group, 'gdrive_to_posts_template_sheet_id' );
+		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_sheet_id' );
 		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_csv_last_line' );
 
 		/**
 		 * Even though WP allows for multi arrays in the settings, if we store options that way then
 		 * we have to have them all present on the page anytime that the page is reloaded.
 		 */
-		foreach($this->settings_for_templates as $setting) {
-			//$_opt = get_option("gdrive_to_posts_template_{$setting}", array());
-			//update_option("gdrive_to_posts_template_{$setting}", $_opt);
+		foreach($this->settings_for_templates as $setting => $default) {
 			register_setting( $gdrive_api_option_group, "gdrive_to_posts_template_{$setting}" );
 		}
-
-
-		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_tags' );
-		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_category' );
-		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_author' );
-		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_data' );
-
-		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_title' );
-		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_body' );
 
 		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_settings' );
 
@@ -353,35 +352,30 @@ class Gdrive_to_posts_Admin {
 		$template_label = str_replace(' ', '-', $template_label);
 
 		if (!!$new_file_id && !!$template_label) {
+
+            $response = array(
+                'html' => "<option value='{$template_label}'>{$template_label}</option>",
+                'hiddenHTML' => "<input value='' name='gdrive_to_posts_template_body[{$template_label}]' id='gdrive_to_posts_template_body[{$template_label}]' type='hidden'>",
+                'hiddenTitle' => "<input value='' name='gdrive_to_posts_template_title[{$template_label}]' id='gdrive_to_posts_template_title[{$template_label}]' type='hidden'>"
+            );
+
 			//$options_template = get_option('gdrive_to_posts_template_body');
 			$options_sheet_id = get_option('gdrive_to_posts_template_sheet_id', array());
 
-            /*/ Only set the template text on labels that are not yet created.
-			if (!isset($options_template[$template_label])) {
-                $options_template[$template_label] = 'Use this area to create a new template';
-                $response['message'] = 'Created new template!';
-			}
-            else {$response['message'] = "Updated File ID on label {$template_label}";}
-			*/
-            // We need to just create all empty fields if this is a new template, but not overwrite if they are set
-			// because sometimes these could be new.
 			$options_sheet_id[$template_label] = $new_file_id;
 			update_option('gdrive_to_posts_template_sheet_id', $options_sheet_id);
 		    $additional_opts = array();
-			foreach ($this->settings_for_templates as $setting_type) {
-				$additional_opts[$setting_type] = get_option( "gdrive_to_posts_template_{$setting_type}", array() );
-				if ( !isset( $additional_opts[$setting_type][$template_label]) ) {
-					$additional_opts[$setting_type][ $template_label ] = '';
-					update_option( "gdrive_to_posts_template_{$setting_type}", $additional_opts[$setting_type] );
-				}
+			foreach ($this->settings_for_templates as $setting => $default) {
+				$additional_opts[$setting] = get_option( "gdrive_to_posts_template_{$setting}", array() );
+				if ( !isset( $additional_opts[$setting][$template_label]) ) {
+					$additional_opts[$setting][ $template_label ] = $default;
+					update_option( "gdrive_to_posts_template_{$setting}", $additional_opts[$setting] );
+				} else {
+                    $response = array();
+                }
 			}
 
-			$response = array(
-					'success' => 1,
-					'html' => "<option value='{$template_label}'>{$template_label}</option>",
-					'hiddenHTML' => "<input value='' name='gdrive_to_posts_template_body[{$template_label}]' id='gdrive_to_posts_template_body[{$template_label}]' type='hidden'>",
-					'hiddenTitle' => "<input value='' name='gdrive_to_posts_template_title[{$template_label}]' id='gdrive_to_posts_template_title[{$template_label}]' type='hidden'>"
-			);
+            $response['success'] = 1;
 
 			$this->end_ajax($response);
 		}
@@ -446,9 +440,9 @@ class Gdrive_to_posts_Admin {
 
 
         $sheet_label = esc_attr($_POST['sheet_label']);
-        $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id', array() );
-        $stored_templates = get_option('gdrive_to_posts_template_body', array() );
-        $title_templates = get_option('gdrive_to_posts_template_title', array() );
+        $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
+        $stored_templates = get_option('gdrive_to_posts_template_body' );
+        $title_templates = get_option('gdrive_to_posts_template_title' );
 
         if (!is_string(($sheet_id = $options_sheet_id[$sheet_label])) || !is_string(($template = $stored_templates[$sheet_label])) || !is_string($title_template = $title_templates[$sheet_label])) {
             $resp['error'] = "Sheet ID {$sheet_id} doesn't work!";
@@ -474,5 +468,50 @@ class Gdrive_to_posts_Admin {
 
         $this->end_ajax();
     }
+
+
+    public function check_for_new_posts() {
+        // Need the google drive connection.
+        $gdrive = $this->gdrive_connection();
+        // This will parse the csv and make new posts if that's what it should do.
+        $workhorse = new GDrive_to_Posts_Workhorse();
+
+        $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
+        $bodies = get_option('gdrive_to_posts_template_body' );
+        $titles = get_option('gdrive_to_posts_template_title' );
+        $authors = get_option('gdrive_to_posts_template_author' );
+        $tags = get_option('gdrive_to_posts_template_tags' );
+        $categories = get_option('gdrive_to_posts_template_category' );
+        $last_lines = get_option('gdrive_to_posts_template_last_line' );
+
+
+        $sheet_labels = array_keys($options_sheet_id);
+
+        foreach($sheet_labels as $sheet_label) {
+            $author = intval($authors[$sheet_label]);
+            $the_tags = $tags[$sheet_label];
+            $category = $categories[$sheet_label];
+            $last_line = intval($last_lines[$sheet_label]);
+
+
+            if ($last_line > 0 && !is_string(($sheet_id = $options_sheet_id[$sheet_label])) || !is_string(($template = $bodies[$sheet_label])) || !is_string($title_template = $titles[$sheet_label])) {
+                if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
+                    $time = data('Y-m-d H:i:S');
+                    error_log("Was unable to check sheet_id $sheet_id at {$time}");
+                }
+                continue;
+            }
+
+            if ($output = $workhorse->parse_file($gdrive, $sheet_id, $template, $title_template, $author, $the_tags, $category, $last_line)) {
+                // We want to see the output here.
+                if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
+                    echo $output;
+                }
+            }
+        }
+
+    }
+
+
 }
 

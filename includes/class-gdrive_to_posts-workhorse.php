@@ -52,18 +52,22 @@ class GDrive_to_Posts_Workhorse
      */
     public function get(\Google_Service_Drive $gdrive, $sheet_id) {
 
-        $file = $gdrive->files->get($sheet_id);
-        if ($file && is_array($file->exportLinks)) {
-
-            // Get the file as text csv using the Google Drive Export method.
-            $csv = wp_remote_get($file->exportLinks['text/csv']);
-            @$csv = is_array($csv) ? $csv['body'] : null;
-            if (!$csv) {
-                return false;
+        try {
+            $file = $gdrive->files->get($sheet_id);
+            if ($file && is_array($file->exportLinks)) {
+                // Get the file as text csv using the Google Drive Export method.
+                $csv = wp_remote_get($file->exportLinks['text/csv']);
+                @$csv = is_array($csv) ? $csv['body'] : null;
+                if (!$csv) {
+                    return false;
+                }
+                $this->add($csv);
             }
-            $this->add($csv);
+            return $csv;
         }
-        return $csv;
+        catch (\Google_Service_Exception $error) {
+            return false;
+        }
     }
 
     public function add($csv) {
@@ -156,7 +160,7 @@ class GDrive_to_Posts_Workhorse
     }
 
 
-    public function parse_file(\Google_Service_Drive $gdrive, $sheet_id, $content_template, $title_template, $max = 10) {
+    public function parse_file(\Google_Service_Drive $gdrive, $sheet_id, $content_template, $title_template, $author = 1, $the_tags = '', $category = 1, $last_line = 1, $max = 10 ) {
         if (!$this->get($gdrive, $sheet_id)) {
             return null;
         }
@@ -189,6 +193,7 @@ class GDrive_to_Posts_Workhorse
 
             $content = $this->parse_template($content_template);
             $title = $this->parse_template($title_template);
+            $title = $this->parse_template($the_tags);
 
             if (!!$content) {
                 $post_content = array(
@@ -196,9 +201,10 @@ class GDrive_to_Posts_Workhorse
                     'post_type'     => 'post',
                     'post_content'  => $content,
                     'post_status'   => 'publish',
-                    'post_author'   => 1,
+                    'post_author'   => (int)$author,
+                    'tags_input'      => $the_tags,
                     'post_excerpt'  => '',
-                    'post_category' => array(1)
+                    'post_category' => array((int)$category)
                 );
 
                 // Try to create a post from the templates.
