@@ -144,7 +144,7 @@ class GDrive_To_Posts_Settings {
 
 
     /**
-    *  The location for the p12 Google Service Key
+     *  The location for the p12 Google Service Key
      * //todo: this should become a type=file
      */
     public function key_file_location_field( ) {
@@ -241,11 +241,8 @@ class GDrive_To_Posts_Settings {
 
         </div>
 
-        <div class="gdrive-template-tags-author-title">
-            <div><?php $this->build_each_template_category_dropdown() ?></div>
-            <div><?php $this->build_each_template_author_select() ?></div>
-            <div><?php $this->build_each_template_tags_input() ?></div>
-            <div><?php $this->build_each_template_title_input() ?></div>
+        <div class="gdrive-template-individual-settings all-templates">
+            <?php $this->create_each_templates_individual_settings() ?>
         </div>
 
         <div class="gdrive-template-delete">
@@ -262,35 +259,140 @@ class GDrive_To_Posts_Settings {
 
         $editor_id = "gdrive_to_posts_template_body-editor";
         wp_editor('<h1>GDrive to Posts v0.1.0</h1><ul><li>Create a new template by entering a label and Sheets file ID in the boxes above</li>'
-                  . '<li>If you\'ve already created some templates you may switch between them using the dropdown above me!</li></ul>'
-                  , $editor_id, array('textarea_name'=> ' ') );
+            . '<li>If you\'ve already created some templates you may switch between them using the dropdown above me!</li></ul>'
+            , $editor_id, array('textarea_name'=> ' ') );
         echo "</table>";
 
 
     }
 
 
-    function build_each_template_title_input() {
+    /**
+     * To just get the settings for 1 template (used by ajax)
+     * @param $label
+     * @return string
+     */
+    function get_individual_settings( $label ) {
+        $html_output = '';
+        if (defined('DOING_AJAX') && DOING_AJAX) {
+            ob_start();
+            ob_flush();
+            ?>
+            <div class="template-field-container template-<?php echo $label ?>" style="display:none">
 
-        $options = get_option('gdrive_to_posts_template_title', array());
+            <?php
+            $this->build_template_data_field( $label );
+            $this->build_template_category_dropdown( $label );
+            $this->build_template_author_select( $label );
+            $this->build_template_tags_input( $label );
+            $this->build_template_title_input( $label );
+            ?>
+
+            </div><?php
+
+            $html_output = ob_get_contents();
+            ob_end_clean();
+        }
+        return $html_output;
+    }
+
+
+    /**
+     *  Goes through the individual templates and builds a <div> to hold all their individual options
+     *  so that they are easier to hide/show, and so that when the user submits the options page form
+     *  all their settings remain for each template.
+     */
+    function create_each_templates_individual_settings() {
+
+        // We can use the `csv_last_line` option to figure out each templates label, which is their options key
+        $options = get_option('gdrive_to_posts_template_csv_last_line', array());
 
         if (is_array($options)) {
             foreach ($options as $label => $val) {
                 ?>
-                <div class="template-title template-<?php echo $label ?>" style="">
-                    <label for="template-title-<?php echo $label ?>">
-                        Title: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_title[<?php echo $label ?>]"
-                                      name="gdrive_to_posts_template_title[<?php echo $label ?>]">
-                    </label>
+                <div class="template-field-container template-<?php echo $label ?>" style="display:none">
+                <?php
+                $this->build_template_data_field( $label );
+                $this->build_template_category_dropdown( $label );
+                $this->build_template_author_select( $label );
+                $this->build_template_tags_input( $label );
+                $this->build_template_title_input( $label );
+                ?>
                 </div>
                 <?php
             }
+        }
+    }
+
+    /**
+     * The `data` field is a checkbox which by default as 0 or '' will signal to the plugin that
+     * the user wishes to use Google Credentials. By '1' it will signal that credentials are not
+     * needed and to treat the Sheet_id of a resource as a URI to a .csv
+     */
+    function build_template_data_field( $label ) {
+
+        $options = get_option('gdrive_to_posts_template_data', array());
+
+        if (is_array($options)) {
+            $val = $options[ $label ];
+
+            ?>
+            <p>
+                <label for="template-data-<?php echo $label ?>">
+                    Access Sheet via Drive (requires fingerprint and Key file):
+                    <input type="radio" value="0"
+                           id="gdrive_to_posts_template_data[<?php echo $label ?>]"
+                           name="gdrive_to_posts_template_data[<?php echo $label ?>]" <?php checked(0, intval($val), true) ?>>
+                </label>
+                <label for="template-data-<?php echo $label ?>">
+                    Access Sheet via URI (<span class="label-info">Click for information</span>):
+                    <input type="radio" value="1"
+                           id="gdrive_to_posts_template_data[<?php echo $label ?>]"
+                           name="gdrive_to_posts_template_data[<?php echo $label ?>]" <?php checked(1, intval($val), true) ?>>
+                    <span class="text-info" style="display:none">
+                        If you don't have a Google Server fingerprint, email, and key file yet or you are
+                        accessing a file that is not your own. Check this box and the plugin will treat
+                        the Sheet ID of your template as a URI (web address to your content). You may use this
+                        option on your own Google Drive Sheets as well but it is not recommended as a long term
+                        solution as the web address to a Sheet published to the web Sheet isn't guaranteed to
+                        always be valid. It is satisfactory for testing purposes or short term work but for long
+                        term you should goto Google Developers Console, create and app and fill in the
+                        credentials information in the top form of this page. To get the URI for a Sheet
+                        navigate to the Sheet in your browser then click the menu option "FILE" -> "Publish to
+                        the web" and under "Link" choose the  options "Sheet 1" and "Comma-separated values
+                        (.csv) and then click "publish". Copy the link that it gives you into the Sheet ID field
+                        for your template on this plugin.
+                </span>
+
+                </label>
+
+            </p>
+            <?php
         }
 
     }
 
 
-    function build_each_template_author_select( ) {
+    function build_template_title_input( $label ) {
+
+        $options = get_option('gdrive_to_posts_template_title', array());
+
+        if (is_array($options)) {
+            $val = $options[ $label ];
+            ?>
+            <div class="template-title">
+                <label for="template-title-<?php echo $label ?>">
+                    Title: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_title[<?php echo $label ?>]"
+                                  name="gdrive_to_posts_template_title[<?php echo $label ?>]">
+                </label>
+            </div>
+            <?php
+        }
+
+    }
+
+
+    function build_template_author_select( $label ) {
 
         $args = array(
             'show_option_none' => __( 'Select Author' ),
@@ -302,45 +404,44 @@ class GDrive_To_Posts_Settings {
         $options = get_option('gdrive_to_posts_template_author', array());
 
         if (is_array($options)) {
-            foreach($options as $label => $val) {
-                $args['selected'] = intval($val);
-                $args['name'] = "gdrive_to_posts_template_author[{$label}]";
-                $args['id'] = "gdrive_to_posts_template_author[{$label}]";
-                ?>
+            $val = $options[ $label ];
+            $args['selected'] = intval($val);
+            $args['name'] = "gdrive_to_posts_template_author[{$label}]";
+            $args['id'] = "gdrive_to_posts_template_author[{$label}]";
+            ?>
 
-                <div class="template-author template-<?php echo $label ?>" style="display:none;">
-                    <label for="template-author-<?php echo $label ?>">
-                        Author: <?php wp_dropdown_users( $args ); ?>
-                    </label>
-                </div>
-                <?php
-            }
+            <div class="template-author">
+                <label for="template-author-<?php echo $label ?>">
+                    Author: <?php wp_dropdown_users( $args ); ?>
+                </label>
+            </div>
+            <?php
         }
     }
 
 
 
-    function build_each_template_tags_input( ) {
+    function build_template_tags_input( $label ) {
 
         $options = get_option('gdrive_to_posts_template_tags', array());
 
         if (is_array($options)) {
-            foreach ($options as $label => $val) {
-                $args['selected'] = $val;
-                ?>
-                <div class="template-tags template-<?php echo $label ?>" style="display:none;">
-                    <label for="template-tags-<?php echo $label ?>">
-                        Tags: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_tags[<?php echo $label ?>]"
-                                     name="gdrive_to_posts_template_tags[<?php echo $label ?>]">
-                    </label>
-                </div>
-                <?php
-            }
+            $val = $options[ $label ];
+
+            $args['selected'] = $val;
+            ?>
+            <div class="template-tags>
+                <label for="gdrive_to_posts_template_tags[<?php echo $label ?>]">
+                    Tags: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_tags[<?php echo $label ?>]"
+                                 name="gdrive_to_posts_template_tags[<?php echo $label ?>]">
+                </label>
+            </div>
+            <?php
         }
     }
 
 
-    function build_each_template_category_dropdown( ) {
+    function build_template_category_dropdown( $label ) {
         $args = array(
             'show_option_none' => __( 'Select category' ),
             'hierarchical'     => 1,
@@ -353,17 +454,20 @@ class GDrive_To_Posts_Settings {
         $options = get_option( 'gdrive_to_posts_template_category' );
 
         if (is_array($options)) {
-            foreach($options as $label => $val) {
-                $args['selected'] = intval($val);
-                $args['name'] = "gdrive_to_posts_template_category[{$label}]";
-                $args['id'] = "gdrive_to_posts_template_category[{$label}]";
-                ?>
-                <div class="template-category template-category-<?php echo $label ?>" style="display:none;">
-                    <h3><?php _e('Categories:'); ?></h3>
-                    <?php wp_dropdown_categories( $args ); ?>
-                </div>
+            $val = $options[ $label ];
+            $args['selected'] = intval($val);
+            $args['name'] = "gdrive_to_posts_template_category[{$label}]";
+            $args['id'] = "gdrive_to_posts_template_category[{$label}]";
+            ?>
+            <div class="template-category>
+                <label for="<?php echo $args['name'] ?>">
                 <?php
-            }
+                _e('Categories:');
+                wp_dropdown_categories( $args );
+                ?>
+                </label>
+            </div>
+            <?php
         }
     }
 

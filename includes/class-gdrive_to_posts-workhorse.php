@@ -47,24 +47,39 @@ class GDrive_to_Posts_Workhorse
      * @param $sheet_id
      * @return bool
      */
-    public function get(\Google_Service_Drive $gdrive, $sheet_id) {
+    public function get( $gdrive, $sheet_id ) {
 
         try {
-            $file = $gdrive->files->get($sheet_id);
-            if ($file && is_array($file->exportLinks)) {
+            $uri = '';
+            if (is_a($gdrive, 'Google_Service_Drive')) {
+                // We will just use the $sheet_id as a file id to drive rather than plain URL.
+                $file = $gdrive->files->get($sheet_id);
+
+                if ($file && is_array($file->exportLinks)) {
+                    $uri = $file->exportLinks['text/csv'];
+                }
+            } elseif ( $gdrive == 'treat_as_uri' ) {
+                // just use sheet_id as URL. For published to web sheets or hosted .csv file's.
+                $uri = $sheet_id;
+            }
+
+            if (!!$uri) {
                 // Get the file as text csv using the Google Drive Export method.
-                $csv = wp_remote_get($file->exportLinks['text/csv']);
+                $csv = wp_remote_get( $uri );
                 @$csv = is_array($csv) ? $csv['body'] : null;
                 if (!$csv) {
                     return false;
                 }
                 $this->add($csv);
+                return $csv;
             }
-            return $csv;
         }
         catch (\Google_Service_Exception $error) {
-            return false;
+            if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
+                echo var_export($error);
+            }
         }
+        return false;
     }
 
     public function add($csv) {
@@ -168,7 +183,25 @@ class GDrive_to_Posts_Workhorse
     }
 
 
-    public function parse_file(\Google_Service_Drive $gdrive, $sheet_label, $sheet_id, $content_template, $title_template, $author = 1, $the_tags = '', $category = 1, $stored_last_line = 1, $n_tests = 0 ) {
+    /**
+     * This is the method that consumes an CSV and turns it into posts.
+     *
+     * // TODO: This should except 3 arguments, the $gdrive, the $sheet_options from db as array, and $n_test -- Having 100 arguments is messy and confusing
+     * @param \Google_Service_Drive|string $gdrive - $gdrive is either \Google_Service_Drive or string == 'treat_as_uri'
+     * @param $sheet_label
+     * @param $sheet_id
+     * @param $content_template
+     * @param $title_template
+     * @param int $author
+     * @param string $the_tags
+     * @param int $category
+     * @param int $stored_last_line
+     * @param int $n_tests
+     * @return bool|null|string
+     * @throws \Exception
+     */
+    public function parse_file($gdrive, $sheet_label, $sheet_id, $content_template, $title_template, $author = 1, $the_tags = '', $category = 1, $stored_last_line = 1, $n_tests = 0 ) {
+        // $gdrive is either \Google_Service_Drive or string == 'treat_as_uri'
         if (!$this->get($gdrive, $sheet_id)) {
             echo "returning because no sheet id / file";
             return null;

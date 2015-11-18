@@ -33,13 +33,17 @@ class Gdrive_to_posts_Admin {
 	private $version;
 
 
+	public $data_map = array(
+		0 => 'drive',
+		1 => 'uri'
+	);
 	private $gdrive;
 	private $gclient;
 	private $settings_for_templates = array(
 			'category' => 0,
 			'tags' => '',
 			'author' => 1,
-			'data' => '',
+			'data' => 0,
 			'sheet_id' => '',
 			'csv_last_line' => 1,
 			'title' => '',
@@ -168,7 +172,7 @@ class Gdrive_to_posts_Admin {
 		 * we have to have them all present on the page anytime that the page is reloaded.
 		 */
 		foreach($this->settings_for_templates as $setting => $default) {
-            if ($setting == 'csv_last_line' || $setting == 'sheet_id' || $setting == 'data') {
+            if ($setting == 'csv_last_line' || $setting == 'sheet_id') {
                 // These 3 are set separately
                 continue;
             }
@@ -289,8 +293,16 @@ class Gdrive_to_posts_Admin {
             ));
 		}
 
-		// Need the google drive connection.
-		$gdrive = $this->gdrive_connection();
+
+		$stored_treat_as_uri_data = get_option('gdrive_to_posts_template_data', array() );
+		$treat_as_uri = isset($stored_treat_as_uri_data[$sheet_label]) ? boolval($stored_treat_as_uri_data[$sheet_label]) : false;
+		if (!$treat_as_uri) {
+			// Need the google drive connection.
+			$gdrive = $this->gdrive_connection();
+		} else {
+			$gdrive = 'treat_as_uri';
+		}
+
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
 
@@ -335,11 +347,6 @@ class Gdrive_to_posts_Admin {
 
 		if (!!($new_file_id) && !!($template_label)) {
 
-            $response = array(
-                'html' => "<option value='{$template_label}'>{$template_label}</option>",
-                'hiddenHTML' => "<input value='' name='gdrive_to_posts_template_body[{$template_label}]' id='gdrive_to_posts_template_body[{$template_label}]' type='hidden'>"
-            );
-
 			foreach ($this->settings_for_templates as $setting => $default) {
                 switch ($setting) {
                     case 'sheet_id':
@@ -354,7 +361,10 @@ class Gdrive_to_posts_Admin {
                 }
 			}
 
+			// Return the settings for Ajax to add into the page.
             $response['success'] = 1;
+			$response['html'] = "<option value='{$template_label}'>{$template_label}</option>";
+			$response['hiddenHTML'] = $this->settings_page->get_individual_settings( $template_label );
 
 			$this->end_ajax($response);
 		}
@@ -449,6 +459,7 @@ class Gdrive_to_posts_Admin {
         }
 
 
+		// TODO: This is done 2 times, create a function to pull out these options. Or have the function that consumes them do it
         $sheet_label = esc_attr($_POST['sheet_label']);
         $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
         $stored_templates = get_option('gdrive_to_posts_template_body' );
@@ -457,6 +468,7 @@ class Gdrive_to_posts_Admin {
         $tags_templates = get_option('gdrive_to_posts_template_tags' );
         $category_templates = get_option('gdrive_to_posts_template_category' );
         $stored_last_lines = get_option('gdrive_to_posts_template_csv_last_line' );
+		$stored_treat_as_uri_data = get_option('gdrive_to_posts_template_data' );
 
 
         $sheet_id = $options_sheet_id[$sheet_label];
@@ -466,17 +478,23 @@ class Gdrive_to_posts_Admin {
         $tags = $tags_templates[$sheet_label];
         $category = $category_templates[$sheet_label];
         $last_line = intval($stored_last_lines[$sheet_label]);
+		$treat_as_uri = isset($stored_treat_as_uri_data[$sheet_label]) ? boolval($stored_treat_as_uri_data[$sheet_label]) : false;
 
         if ( !is_string($sheet_id) || !is_string($template) || !is_string($title_template) || !$last_line) {
             $resp['error'] = "Sheet ID {$sheet_id} doesn't work!";
             $this->end_ajax();
         }
 
-        // Need the google drive connection.
-        $gdrive = $this->gdrive_connection();
+		// Get the connection or the explicit option to not use GDrive connection.
+		if (!$treat_as_uri) {
+			// Need the google drive connection.
+			$gdrive = $this->gdrive_connection();
+		} else {
+			$gdrive = 'treat_as_uri';
+		}
+
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
-
         if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $template, $title_template, $author, $tags, $category, $last_line, 5)) {
             // We want to see the output here.
 
@@ -494,11 +512,10 @@ class Gdrive_to_posts_Admin {
 
 
     public function check_for_new_posts() {
-        // Need the google drive connection.
-        $gdrive = $this->gdrive_connection();
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
 
+		// TODO: This is done 2 times, create a function to pull out these options. Or have the function that consumes them do it
         $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
         $bodies = get_option('gdrive_to_posts_template_body' );
         $titles = get_option('gdrive_to_posts_template_title' );
@@ -506,6 +523,7 @@ class Gdrive_to_posts_Admin {
         $tags = get_option('gdrive_to_posts_template_tags' );
         $categories = get_option('gdrive_to_posts_template_category' );
         $last_lines = get_option('gdrive_to_posts_template_csv_last_line' );
+		$stored_treat_as_uri_data = get_option('gdrive_to_posts_template_data' );
 
         $sheet_labels = array_keys($options_sheet_id);
 
@@ -518,8 +536,16 @@ class Gdrive_to_posts_Admin {
             $sheet_id = $options_sheet_id[$sheet_label];
             $template = $bodies[$sheet_label];
             $title_template = $titles[$sheet_label];
+			$treat_as_uri = boolval($stored_treat_as_uri_data[$sheet_label]);
 
-             //echo var_export(array($author, $the_tags, $category, $last_line, $sheet_id, $template, $title_template));
+			// We have to get connection on sheet to sheet basis.
+			if (!$treat_as_uri) {
+				// Need the google drive connection.
+				$gdrive = $this->gdrive_connection();
+			} else {
+				$gdrive = 'treat_as_uri';
+			}
+
 
             if (!$last_line || !is_string($sheet_id) || !is_string($template) || !is_string($title_template)) {
 

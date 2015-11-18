@@ -35,13 +35,17 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
       $(window).on('load', function () {
         _this.setupFetchFieldsButton();
-        _this.setupBtn();
+        _this.createNewTemplateBtn();
         _this.templateSelect();
         _this.setupGoogleTestBtn();
         _this.setupTemplateTestBtn();
         _this.deleteTemplateBtn();
       });
     }
+
+    /**
+     * Call Ajax hook to parse the top row of an CSV and get the fields back to show the user.
+     */
 
     _createClass(TemplateAjaxClass, [{
       key: 'setupFetchFieldsButton',
@@ -78,9 +82,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                   output += '<h5>Could not find any fields for the Sheet File ID provided with template ' + sheetID + '!</h5>';
                 } else {
                   resp = resp.responseJSON;
-                  fields = resp.fields;
                   // Basically we should just be getting back a list of fields
-                  console.log(resp.fields);
+                  fields = resp.fields;
 
                   // Create the output for the fields if found
                   if (fields.length) {
@@ -230,7 +233,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
     }, {
       key: 'deleteTemplateBtn',
       value: function deleteTemplateBtn() {
-        var templateDeleteBtn = $('#gdrive-delete-template');
+        var templateDeleteBtn = $('#gdrive-delete-template'),
+            _self = this; // Need this in a deeper scope. Arrows won't help.
         if (!templateDeleteBtn.length) {
           return false;
         }
@@ -257,7 +261,29 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
               if (!resp || (typeof resp === 'undefined' ? 'undefined' : _typeof(resp)) !== "object" || _typeof(resp.responseJSON) !== "object") {
                 output += '<h3>The server did not respond well.</h3>';
               } else {
-                $('input[name$="[' + sheetLabel + ']"').remove();
+                var templateSelect = $('select[name="choose-editor-template"]'),
+                    individualOptions = $('.gdrive-template-individual-settings.all-templates'),
+                    hiddenTemplateBody = $('input[name="gdrive_to_posts_template_body[' + sheetLabel + ']"]'),
+                    fieldsToRemove = '.template-field-container.template-' + sheetLabel,
+                    optsToRemove = 'option[value="' + sheetLabel + '"]';
+
+                if (individualOptions.find(fieldsToRemove).length) {
+                  individualOptions.find(fieldsToRemove).remove();
+                }
+
+                if (templateSelect.find(optsToRemove).length) {
+                  templateSelect.find(optsToRemove).remove();
+                  templateSelect.find('option').first().prop('selected', 1);
+                  if (typeof _self.deleteLastActiveTemplate === "function") {
+                    _self.deleteLastActiveTemplate();
+                  }
+                  templateSelect.trigger('change');
+                }
+                if (hiddenTemplateBody.length) {
+                  hiddenTemplateBody.remove();
+                }
+                // Hide the delete button, nothing to delete now.
+                templateDeleteBtn.hide();
               }
 
               //TODO: Setup what happens when delete goes through.
@@ -300,7 +326,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             titlesOptionLabel = 'gdrive_to_posts_template_title',
             variousBtnsWithInfo = $('#get-gdrive-sheet-field-names, #sheet-template-tester, #gdrive-delete-template'),
             fieldsExplaination = $('.gdrive-template-fields-explanation'),
-            outputElem = $('.gdrive-template-fields-listings');
+            outputElem = $('.gdrive-template-fields-listings'),
+            _self = this; // Need this to tack on deleteLastActiveTemplate to this object in different scope.
 
         $selectBox.on('change', function (evt) {
           // doing this will hide the fields that were open from last template viewed
@@ -325,11 +352,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           title.content = title.$.prop('name');
           title.content = title.$.val();
 
-          // show the dropdown categories option for this template
-          showActiveCategoryDropDown(selectedOption);
-          showActiveTemplateTags(selectedOption);
-          showActiveTemplateAuthor(selectedOption);
-          showActiveTemplateTitle(selectedOption);
+          // show the data, categories, author, tags, title for this template.
+          showActiveTemplateOptionFields(selectedOption);
 
           if (!selectedOption) {
             hideLastActiveTemplate();
@@ -338,7 +362,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             // empty the title val
             title.$.val('');
             variousBtnsWithInfo.data('sheet-label', '').hide();
-            console.log('changing content in the editor to nothing.');
+
             return false;
           }
           // We only want to see this button when there is a file id to show.
@@ -349,7 +373,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           desiredTemplate.content = desiredTemplate.$.length ? desiredTemplate.$.val() : '';
           desiredTitle.name = titlesOptionLabel + '[' + selectedOption + ']';
           desiredTitle.$ = hiddenTitleFields.find('input[name="' + desiredTitle.name + '"]');
-          console.log('found desired template', desiredTemplate.name, desiredTitle.name);
           desiredTitle.content = desiredTitle.$.length ? desiredTitle.$.val() : '';
 
           // We need to make sure that the content from the current editor is hidden away correctly so that the
@@ -400,7 +423,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           function hideLastActiveTemplate() {
             if (editor.name != '') {
               editor.content = firstDefined(getTextEditorContent());
-              console.log('editor has name %s and value %s.', editor.name, editor.content);
 
               if (hiddenTemplateFields.find('input[name="' + editor.name + '"]').length) {
                 hiddenTemplateFields.find('input[name="' + editor.name + '"]').val(editor.content);
@@ -409,64 +431,36 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
               }
             }
           }
-          function showActiveCategoryDropDown(label) {
-            var dropdownSelector = $('.template-category.template-category-' + label),
-                allSelectors = $('.template-category');
-            if (allSelectors.length) {
-              allSelectors.hide();
-              if (label && dropdownSelector.length) {
-                dropdownSelector.show();
-              }
-            }
-          }
 
           /**
-           * Show the template tags input for the current template
+           * This should only be called from outside to remove the templates
+           * hidden field so that on a 'save settings' the deleted template isn't
+           * still present in the list of available templates.
            */
-          function showActiveTemplateTags(label) {
-            var tagsInputWrapper = $('.template-tags.template-' + label),
-                allTagsInputs = $('.template-tags');
-            if (allTagsInputs.length) {
-              allTagsInputs.hide();
-              if (label && tagsInputWrapper.length) {
-                tagsInputWrapper.show();
-              }
-            }
+          function deleteLastActiveTemplate() {
+            updateTextEditor();
+            editor.name = '';
+            editor.content = '';
+            editor.$.prop('name', '');
           }
+          // It will have to be called from outer function
+          _self.deleteLastActiveTemplate = deleteLastActiveTemplate;
 
-          /**
-           * Show the template tags input for the current template
-           */
-          function showActiveTemplateTitle(label) {
-            var titelInputWrapper = $('.template-title.template-' + label),
-                allTitelInputs = $('.template-title');
-            if (allTitelInputs.length) {
-              allTitelInputs.hide();
-              if (label && titelInputWrapper.length) {
-                titelInputWrapper.show();
-              }
-            }
-          }
-
-          /**
-           * Show the author input for the current template
-           * @param label
-           */
-          function showActiveTemplateAuthor(label) {
-            var authorInputWrapper = $('.template-author.template-' + label),
-                allAuthorInputs = $('.template-author');
-            if (allAuthorInputs.length) {
-              allAuthorInputs.hide();
-              if (label && authorInputWrapper.length) {
-                authorInputWrapper.show();
+          function showActiveTemplateOptionFields(label) {
+            var selectedTemplateOpts = $('.gdrive-template-individual-settings .template-' + label),
+                allTemplateOpts = $('.template-field-container');
+            if (allTemplateOpts.length) {
+              allTemplateOpts.hide();
+              if (label && selectedTemplateOpts.length) {
+                selectedTemplateOpts.show();
               }
             }
           }
         }); // End selectbox.on('change');
       }
     }, {
-      key: 'setupBtn',
-      value: function setupBtn() {
+      key: 'createNewTemplateBtn',
+      value: function createNewTemplateBtn() {
         var _this2 = this;
 
         var $addNewButton = $('#gdriveToPostsAddNewTemplateBtn');
@@ -497,14 +491,18 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
               success: function success(resp) {
                 if (resp && resp.success == 1 && resp.html && resp.hiddenHTML) {
                   var templateDropdown = $('select[name="choose-editor-template"]'),
-                      templateHiddenInputs = $('#gdrive-hidden-templates');
+                      templateHiddenInputs = $('.gdrive-template-individual-settings.all-templates');
                   // Add new label to the dropdown menu
                   if (templateDropdown.length && !!resp.html) {
                     templateDropdown.append(resp.html);
                   }
                   // Add new template body input to the collection of hidden inputs
                   if (templateHiddenInputs.length && !!resp.hiddenHTML) {
-                    templateHiddenInputs.append(resp.hiddenHTML);
+                    // We only want to append new template settings if it is new. It could just be an updated
+                    // label -> ID relationship
+                    if (!templateHiddenInputs.find('.template-field-container.template-' + tempLabel).length) {
+                      templateHiddenInputs.append(resp.hiddenHTML);
+                    }
                   }
                 }
 
