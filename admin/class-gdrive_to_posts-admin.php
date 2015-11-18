@@ -168,28 +168,14 @@ class Gdrive_to_posts_Admin {
 		 * we have to have them all present on the page anytime that the page is reloaded.
 		 */
 		foreach($this->settings_for_templates as $setting => $default) {
+            if ($setting == 'csv_last_line' || $setting == 'sheet_id' || $setting == 'data') {
+                // These 3 are set separately
+                continue;
+            }
 			register_setting( $gdrive_api_option_group, "gdrive_to_posts_template_{$setting}" );
 		}
 
 		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_settings' );
-
-		/*
-		add_settings_field(
-				'gdrive_to_posts_checkbox_field_3',
-				__( 'Settings field description', 'gdrive_to_posts' ),
-				'gdrive_to_posts_checkbox_field_3_render',
-				$gdrive_post_option_group,
-				$gdrive_post_posts_section
-		);
-
-		add_settings_field(
-				'gdrive_to_posts_radio_field_4',
-				__( 'Settings field description', 'gdrive_to_posts' ),
-				'gdrive_to_posts_radio_field_4_render',
-				$gdrive_post_option_group,
-				$gdrive_post_posts_section
-		);
-		*/
 
 
 	}
@@ -287,7 +273,7 @@ class Gdrive_to_posts_Admin {
 	 */
 	public function fetch_sheet_fields() {
 		// For now I think we will only allow new templates to be added using Ajax
-		if (!defined('DOING_AJAX') || !DOING_AJAX || !all_set($_POST['sheet_label'])) {
+		if (!defined('DOING_AJAX') || !DOING_AJAX || !all_set($_POST, 'sheet_label')) {
 			$this->end_ajax();
 		}
 		if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
@@ -296,7 +282,7 @@ class Gdrive_to_posts_Admin {
 
 		$options_sheet_id = get_option('gdrive_to_posts_template_sheet_id', array());
 		$sheet_label = esc_attr($_POST['sheet_label']);
-		if (!all_set($options_sheet_id[$sheet_label]) || !is_string(($sheet_id = $options_sheet_id[$sheet_label]))) {
+		if (!all_set($options_sheet_id, $sheet_label) || !is_string(($sheet_id = $options_sheet_id[$sheet_label]))) {
 			$this->end_ajax(array(
                 'success' => 0,
                 'error' => "Unable to locate Sheet ID for {$sheet_label}"
@@ -334,7 +320,7 @@ class Gdrive_to_posts_Admin {
      */
 	public function add_new_template() {
 		// For now I think we will only allow new templates to be added using Ajax
-		if (!defined('DOING_AJAX') || !DOING_AJAX || !all_set($_POST['new_sheet_id'], $_POST['new_template_label'])) {
+		if (!defined('DOING_AJAX') || !DOING_AJAX || !all_set($_POST, 'new_sheet_id', 'new_template_label')) {
 			$this->end_ajax();
 		}
 		if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
@@ -347,26 +333,24 @@ class Gdrive_to_posts_Admin {
 		$template_label = esc_attr($_POST['new_template_label']);
 		$template_label = str_replace(' ', '-', $template_label);
 
-		if (!!$new_file_id && !!$template_label) {
+		if (!!($new_file_id) && !!($template_label)) {
 
             $response = array(
                 'html' => "<option value='{$template_label}'>{$template_label}</option>",
                 'hiddenHTML' => "<input value='' name='gdrive_to_posts_template_body[{$template_label}]' id='gdrive_to_posts_template_body[{$template_label}]' type='hidden'>"
             );
 
-			//$options_template = get_option('gdrive_to_posts_template_body');
-			$options_sheet_id = get_option('gdrive_to_posts_template_sheet_id', array());
-
-			$options_sheet_id[$template_label] = $new_file_id;
-			update_option('gdrive_to_posts_template_sheet_id', $options_sheet_id);
-		    $additional_opts = array();
 			foreach ($this->settings_for_templates as $setting => $default) {
-				$additional_opts[$setting] = get_option( "gdrive_to_posts_template_{$setting}", array() );
-				if ( !all_set( $additional_opts[$setting][$template_label]) ) {
-					$additional_opts[$setting][ $template_label ] = $default;
-					update_option( "gdrive_to_posts_template_{$setting}", $additional_opts[$setting] );
-				} else {
-                    $response = array();
+                switch ($setting) {
+                    case 'sheet_id':
+                        // We need to handle the sheet id without overwriting it.
+                        $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id', array());
+                        $options_sheet_id[$template_label] = $new_file_id;
+                        update_option('gdrive_to_posts_template_sheet_id', $options_sheet_id);
+                        break;
+                    default:
+                        set_option_if_not_set("gdrive_to_posts_template_{$setting}", $template_label, $default);
+                        break;
                 }
 			}
 
@@ -379,6 +363,37 @@ class Gdrive_to_posts_Admin {
 	}
 
 
+    /**
+     * Delete a template and all its data.. permanent!
+     */
+    function delete_template() {
+
+        if (!defined('DOING_AJAX') || !DOING_AJAX) {
+            wp_die("This function should only be called using Ajax.");
+        }
+
+        // Get the label used as a key to identify all the data for this template to delete
+        $sheet_label = esc_attr($_POST['sheet_label']);
+        if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template') || !$sheet_label) {
+            $this->end_ajax();
+        }
+
+        foreach($this->settings_for_templates as $setting_type => $default_value) {
+            if (!($settings = get_option("gdrive_to_posts_template_{$setting_type}"))) {
+                continue;
+            }
+            // If there are settings for this template, even if empty we should delete.
+            if (isset($settings[$sheet_label])) {
+                unset($settings[$sheet_label]);
+                update_option("gdrive_to_posts_template_{$setting_type}", $settings);
+            }
+        }
+
+        $this->end_ajax(array('success'=>1, 'message' => __("Removed Sheet labeled") . " \"{$sheet_label}\" " . __(" from the system")));
+    }
+
+
+
 
     /**
      * Test the connection to the google drive service
@@ -388,7 +403,7 @@ class Gdrive_to_posts_Admin {
      */
     public function test_gclient() {
 
-        if (!defined('DOING_AJAX') || !DOING_AJAX) {
+        if (!defined('DOING_AJAX') || !DOING_AJAX || !current_user_can('update_core')) {
             wp_die("This function should only be called using Ajax.");
         }
         if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
@@ -426,7 +441,7 @@ class Gdrive_to_posts_Admin {
     public function test_template() {
 
         $resp = array('success'=>0);
-        if (!defined('DOING_AJAX') || !DOING_AJAX || !all_set($_POST['sheet_label']) || !current_user_can('update_core')) {
+        if (!defined('DOING_AJAX') || !DOING_AJAX || !all_set($_POST, 'sheet_label') || !current_user_can('update_core')) {
             $this->end_ajax();
         }
         if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
@@ -450,9 +465,9 @@ class Gdrive_to_posts_Admin {
         $author = $author_templates[$sheet_label];
         $tags = $tags_templates[$sheet_label];
         $category = $category_templates[$sheet_label];
-        $last_line = $stored_last_lines[$sheet_label];
+        $last_line = intval($stored_last_lines[$sheet_label]);
 
-        if ( !is_string($sheet_id) || !is_string($template) || !is_string($title_template) || !all_set($last_line)) {
+        if ( !is_string($sheet_id) || !is_string($template) || !is_string($title_template) || !$last_line) {
             $resp['error'] = "Sheet ID {$sheet_id} doesn't work!";
             $this->end_ajax();
         }
@@ -462,7 +477,7 @@ class Gdrive_to_posts_Admin {
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
 
-        if ($output = $workhorse->parse_file($gdrive, $sheet_id, $template, $title_template, $author, $tags, $category, $last_line, 5)) {
+        if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $template, $title_template, $author, $tags, $category, $last_line, 5)) {
             // We want to see the output here.
 
             $this->end_ajax(array('success'=>1, 'output'=>$output));
@@ -490,32 +505,38 @@ class Gdrive_to_posts_Admin {
         $authors = get_option('gdrive_to_posts_template_author' );
         $tags = get_option('gdrive_to_posts_template_tags' );
         $categories = get_option('gdrive_to_posts_template_category' );
-        $last_lines = get_option('gdrive_to_posts_template_last_line' );
-
+        $last_lines = get_option('gdrive_to_posts_template_csv_last_line' );
 
         $sheet_labels = array_keys($options_sheet_id);
 
         foreach($sheet_labels as $sheet_label) {
+            $sheet_label = esc_attr($sheet_label);
             $author = intval($authors[$sheet_label]);
             $the_tags = $tags[$sheet_label];
             $category = $categories[$sheet_label];
             $last_line = intval($last_lines[$sheet_label]);
+            $sheet_id = $options_sheet_id[$sheet_label];
+            $template = $bodies[$sheet_label];
+            $title_template = $titles[$sheet_label];
 
+             //echo var_export(array($author, $the_tags, $category, $last_line, $sheet_id, $template, $title_template));
 
-            if ($last_line > 0 && !is_string(($sheet_id = $options_sheet_id[$sheet_label])) || !is_string(($template = $bodies[$sheet_label])) || !is_string($title_template = $titles[$sheet_label])) {
+            if (!$last_line || !is_string($sheet_id) || !is_string($template) || !is_string($title_template)) {
+
                 if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
-                    $time = data('Y-m-d H:i:S');
+                    $time = date('Y-m-d H:i:S');
                     error_log("Was unable to check sheet_id $sheet_id at {$time}");
                 }
                 continue;
             }
 
-            if ($output = $workhorse->parse_file($gdrive, $sheet_id, $template, $title_template, $author, $the_tags, $category, $last_line)) {
+            if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $template, $title_template, $author, $the_tags, $category, $last_line)) {
                 // We want to see the output here.
                 if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
                     echo $output;
                 }
             }
+
         }
 
     }

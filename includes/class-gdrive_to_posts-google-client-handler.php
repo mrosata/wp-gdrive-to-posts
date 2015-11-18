@@ -140,6 +140,9 @@ class Google_Client_Handler
 
 
     function get_sheet($sheet_id) {
+        if (!$sheet_id || !is_string($sheet_id)) {
+            return false;
+        }
         $file = $this->google_drive->files->get($sheet_id);
         if ($file && is_array($file->exportLinks)) {
 

@@ -13,19 +13,16 @@ class GDrive_to_Posts_Workhorse
     private $template;
     private $options;
 
+    private $testing = false;
+    /**
+     * Stores an array with all the posts that have been parsed.
+     * If testing is on should be the only time it happens.
+     * @var array
+     */
+    private $work_done = array();
+
     function __constructor() {
         $options = get_option( 'gdrive_to_posts_settings' );
-        if (!is_array($options)) {
-            // If we don't have an options array yet then something is wrong.
-            return false;
-        }
-        if (!isset($options['post_body_template'])) {
-            // We will have to set a default. So there won't be much in the post body.
-            $options['post_body_template'] = '';
-            update_option('gdrive_to_posts_settings', $options);
-        }
-
-        $this->template = $options['post_body_template'];
         $this->options = $options;
     }
 
@@ -171,10 +168,12 @@ class GDrive_to_Posts_Workhorse
     }
 
 
-    public function parse_file(\Google_Service_Drive $gdrive, $sheet_id, $content_template, $title_template, $author = 1, $the_tags = '', $category = 1, $stored_last_line = 1, $n_tests = 0 ) {
+    public function parse_file(\Google_Service_Drive $gdrive, $sheet_label, $sheet_id, $content_template, $title_template, $author = 1, $the_tags = '', $category = 1, $stored_last_line = 1, $n_tests = 0 ) {
         if (!$this->get($gdrive, $sheet_id)) {
+            echo "returning because no sheet id / file";
             return null;
         }
+        $this->testing = (boolval($n_tests));
 
         // Alright, let's parse this sheet.
         $csv_text = $this->csv_text;
@@ -184,9 +183,18 @@ class GDrive_to_Posts_Workhorse
             return false;
         }
 
+        $all_last_lines = get_option('gdrive_to_posts_template_csv_last_line');
+        if (!is_array($all_last_lines) || (!$this->testing && $all_last_lines[$sheet_label] != $stored_last_line)) {
+            // Either we don't have last lines or we aren't testing and the last line passed doesn't match!
+            if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
+                throw new \Exception("Bad information passed to Workhorse->parse_file");
+            }
+            return false;
+        }
+
         $output = '';
         $row_number = 1;
-        $post_status = $n_tests > 0 ? 'draft' : 'publish';
+        $post_status = $this->testing ? 'draft' : 'publish';
         // Row 1 becomes our keys for every other row, needed for templating.
         $keys = str_getcsv( (array_shift($csv_rows)), ',', '"');
         $keys = array_map(function($val) {
@@ -210,6 +218,15 @@ class GDrive_to_Posts_Workhorse
 
             // Begin the work knowing we are on a row that has not been read before.
             $row_items = str_getcsv($row, ',', '"');
+            // If the rows are different sizes then that should be fixed before combining is attempted.
+            if (count($keys) !== count($row_items)) {
+                if (count($keys) > count($row_items)) {
+                    $row_items = array_pad($row_items, count($keys), '');
+                } else {
+                    $keys = array_pad($keys, count($row_items), '');
+                }
+            }
+
             $entry = array_combine($keys, $row_items);
 
             $this->current_row = $entry;
@@ -233,6 +250,12 @@ class GDrive_to_Posts_Workhorse
 
                 // Try to create a post from the templates.
                 if ($post_insert_id = $this->create_post($post_content)) {
+                    // Update the last row for this file (if we are not testing).
+                    if (!$this->testing) {
+                        $all_last_lines[$sheet_label] = $row_number;
+                        update_option( 'gdrive_to_posts_template_csv_last_line', $all_last_lines );
+                        // COOL! A Post has been parsed and recorded where it was updated from updated!
+                    }
                     $output .= "<br>Created new post at " . get_page_uri($post_insert_id);
                 } else {
                     $output .= "<br>Failed to create page {$row_number}...";
@@ -243,9 +266,22 @@ class GDrive_to_Posts_Workhorse
 
         }
 
+        $this->testing = false;
         return $output;
     }
 
+
+    /**
+     * An array holding posts that were created, in their array form as passed to wp_insert_post.
+     * The array is only tracked when testing by users.
+     *
+     * @return array
+     */
+    public function get_work() {
+        if (isset($this->work_done)) {
+            return $this->work_done;
+        }
+    }
 
     /**
      * Builds and publish post from array
@@ -265,8 +301,11 @@ class GDrive_to_Posts_Workhorse
         // Create post object
         $post = array_merge( $post_defaults, $post_args );
 
-        echo var_export( $post );
-        exit;
+        if ($this->testing) {
+            // When testing we store the work done to an array which can be returned from or
+            // gotten from methods of this class using get_work()
+            $this->work_done[] = $post;
+        }
 
         // Insert the post into the database
         $id = wp_insert_post( $post );

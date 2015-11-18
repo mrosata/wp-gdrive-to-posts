@@ -25,6 +25,7 @@
         this.templateSelect();
         this.setupGoogleTestBtn();
         this.setupTemplateTestBtn();
+        this.deleteTemplateBtn();
       });
     }
 
@@ -186,6 +187,47 @@
 
 
     /**
+     * Click Handler for Google Test Button
+     */
+    deleteTemplateBtn() {
+      var templateDeleteBtn = $('#gdrive-delete-template');
+      if (!templateDeleteBtn.length) {
+        return false;
+      }
+
+      templateDeleteBtn.on('click.gdrive-to-posts', function(evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        // This button gets sheetID like the fields button (through the select change method).
+        var sheetLabel = $(this).data('sheet-label');
+        var data = {
+          action: 'gdrive_to_posts_delete_template',
+          nonce: gdriveToPosts.nonce,
+          sheet_label: sheetLabel
+        };
+
+        $.ajax({
+          url: gdriveToPosts.ajaxURL,
+          type: 'post',
+          dataType: 'json',
+          data,
+          complete (resp) {
+            var output = '';
+            if (!resp || typeof resp !== "object" || typeof resp.responseJSON !== "object") {
+              output += '<h3>The server did not respond well.</h3>';
+            } else {
+              $(`input[name$="[${sheetLabel}]"`).remove();
+            }
+
+            //TODO: Setup what happens when delete goes through.
+          }
+        });
+      });
+    }
+
+
+    /**
      * Create CSS for a modal to show messages on the form.
      * @param message
      * @param type
@@ -211,7 +253,7 @@
       var $selectBox = $('select[name="choose-editor-template"]'),
         templateOptionLabel = 'gdrive_to_posts_template_body',
         titlesOptionLabel = 'gdrive_to_posts_template_title',
-        fetchFieldsBtn = $('#get-gdrive-sheet-field-names, #sheet-template-tester'),
+        variousBtnsWithInfo = $('#get-gdrive-sheet-field-names, #sheet-template-tester, #gdrive-delete-template'),
         fieldsExplaination = $('.gdrive-template-fields-explanation'),
         outputElem = $('.gdrive-template-fields-listings');
 
@@ -249,12 +291,12 @@
           updateTextEditor('');
           // empty the title val
           title.$.val('');
-          fetchFieldsBtn.data('sheet-label', '').hide();
+          variousBtnsWithInfo.data('sheet-label', '').hide();
           console.log('changing content in the editor to nothing.');
           return false;
         }
         // We only want to see this button when there is a file id to show.
-        fetchFieldsBtn.show().data('sheet-label', selectedOption);
+        variousBtnsWithInfo.show().data('sheet-label', selectedOption);
 
 
         desiredTemplate.name = `${templateOptionLabel}[${selectedOption}]`;

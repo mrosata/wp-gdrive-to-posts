@@ -75,10 +75,35 @@ function run_gdrive_to_posts() {
 
 }
 
-function all_set() {
+
+/**
+ * Try to set the options if not already set.
+ *
+ * @param $option_namespace
+ * @param $option_key
+ * @param string $option_default
+ * @return bool
+ */
+function set_option_if_not_set( $option_namespace, $option_key, $option_default = '' ) {
+
+	if (!($options = get_option( $option_namespace, array()) )) {
+		$options = array();
+	}
+	if (isset($options[$option_key]) && !empty($options[$option_key])) {
+
+		return true;
+	}
+	$options[$option_key] = $option_default;
+
+	return update_option($option_namespace, $options);
+}
+
+
+function all_set($array, $fields) {
 	$fields = func_get_args();
+	array_shift($fields);
 	foreach($fields as $field) {
-		if (!isset($field) || empty($field)) {
+		if (!isset($array[$field]) || empty($array[$field])) {
 			return false;
 		}
 	}

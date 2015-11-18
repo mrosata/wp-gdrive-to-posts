@@ -158,34 +158,6 @@ class GDrive_To_Posts_Settings {
 
 
 
-    public function post_body_template_textarea( $id ) {
-        $options = get_option( 'gdrive_to_posts_template_body' );
-        if (!is_array($options)) {
-            // There is no way this should be called if the base level settings haven't even been created!
-            return false;
-        }
-        $gdrive_template = $options[ $id ];
-        if (!is_array($gdrive_template)) {
-            ?>
-            <h1>There is a problem with your Google Drive to Posts plugin.</h1>
-            <p>The developer would like to hear about this, you can chew his ear off
-                at <a href="mailto:mrosata1984@gmail.com">mrosata1984@gmail.com</a>.
-                Basically the plugin is trying to build a template form for a template
-                that does not exist! That's crackers bro, straight jazz crackers!
-            </p>
-            <?php
-            return false;
-        }
-
-        echo "<h2 id='gdrive-to-posts-template-label'>{$gdrive_template['label']}</h2>";
-        ?>
-
-        <input type='text' name='gdrive_to_posts_template_body[<?php echo $id ?>][sheet_id]' value='<?php echo $gdrive_template['sheet_id']; ?>'>
-        <td style="width:15%"></td>
-        <?php
-    }
-
-
     public function create_new_template_fields( ) {
         ?>
 
@@ -214,31 +186,6 @@ class GDrive_To_Posts_Settings {
     }
 
 
-    /**
-     * Title Templates for the posts
-     */
-    public function template_titles_fields( ) {
-        $options = get_option( 'gdrive_to_posts_template_title' );
-
-        if (!is_array($options)) {
-            $options = array();
-            update_option('gdrive_to_posts_template_title', $options);
-        }
-
-        $hidden_titles = '';
-        foreach ($options as $key => $title_template) {
-            if (!is_string($title_template)) {
-                continue;
-            }
-            $title_template = esc_textarea($title_template);
-            $hidden_titles .= "<input type='hidden' id='gdrive_to_posts_template_title[{$key}]' name='gdrive_to_posts_template_title[{$key}]' value='{$title_template}'>";
-        }
-
-        // The hidden inputs with titles in them for JavaScript to pull out
-        echo "<div id='hidden-title-templates'>{$hidden_titles}</div>";
-    }
-
-
 
     /**
      * Each of the different types of posts which you may want to build have to have a file id as
@@ -260,9 +207,6 @@ class GDrive_To_Posts_Settings {
         $chose_template = __('Choose a template', 'gdrive_to_posts');
         echo "<label>Select a template<select name='choose-editor-template'>\n\t<option value='' selected>{$chose_template}</option>\n";
         foreach ($options as $key => $template) {
-            if (!is_string($template)) {
-                continue;
-            }
             // print out the options for this template.
             echo "\t<option value='{$key}'>{$key}</option>\n";
 
@@ -296,11 +240,16 @@ class GDrive_To_Posts_Settings {
         <div class='gdrive-template-fields-listings'>
 
         </div>
+
         <div class="gdrive-template-tags-author-title">
             <div><?php $this->build_each_template_category_dropdown() ?></div>
             <div><?php $this->build_each_template_author_select() ?></div>
             <div><?php $this->build_each_template_tags_input() ?></div>
             <div><?php $this->build_each_template_title_input() ?></div>
+        </div>
+
+        <div class="gdrive-template-delete">
+            <button class="button button-danger" type="delete" id="gdrive-delete-template"><?php _e('DELETE THIS TEMPLATE') ?></button>
         </div>
         <hr>
 
@@ -325,16 +274,19 @@ class GDrive_To_Posts_Settings {
 
         $options = get_option('gdrive_to_posts_template_title', array());
 
-        foreach ($options as $label => $val) {
-            ?>
-            <div class="template-title template-<?php echo $label ?>" style="display:none;">
-                <label for="template-title-<?php echo $label ?>">
-                    Title: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_title[<?php echo $label ?>]"
-                                 name="gdrive_to_posts_template_title[<?php echo $label ?>]">
-                </label>
-            </div>
-            <?php
+        if (is_array($options)) {
+            foreach ($options as $label => $val) {
+                ?>
+                <div class="template-title template-<?php echo $label ?>" style="">
+                    <label for="template-title-<?php echo $label ?>">
+                        Title: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_title[<?php echo $label ?>]"
+                                      name="gdrive_to_posts_template_title[<?php echo $label ?>]">
+                    </label>
+                </div>
+                <?php
+            }
         }
+
     }
 
 
@@ -349,18 +301,20 @@ class GDrive_To_Posts_Settings {
 
         $options = get_option('gdrive_to_posts_template_author', array());
 
-        foreach($options as $label => $val) {
-            $args['selected'] = intval($val);
-            $args['name'] = "gdrive_to_posts_template_author[{$label}]";
-            $args['id'] = "gdrive_to_posts_template_author[{$label}]";
-            ?>
+        if (is_array($options)) {
+            foreach($options as $label => $val) {
+                $args['selected'] = intval($val);
+                $args['name'] = "gdrive_to_posts_template_author[{$label}]";
+                $args['id'] = "gdrive_to_posts_template_author[{$label}]";
+                ?>
 
-            <div class="template-author template-<?php echo $label ?>" style="display:none;">
-                <label for="template-author-<?php echo $label ?>">
-                    Author: <?php wp_dropdown_users( $args ); ?>
-                </label>
-            </div>
-            <?php
+                <div class="template-author template-<?php echo $label ?>" style="display:none;">
+                    <label for="template-author-<?php echo $label ?>">
+                        Author: <?php wp_dropdown_users( $args ); ?>
+                    </label>
+                </div>
+                <?php
+            }
         }
     }
 
@@ -370,16 +324,18 @@ class GDrive_To_Posts_Settings {
 
         $options = get_option('gdrive_to_posts_template_tags', array());
 
-        foreach ($options as $label => $val) {
-            $args['selected'] = $val;
-            ?>
-            <div class="template-tags template-<?php echo $label ?>" style="display:none;">
-                <label for="template-tags-<?php echo $label ?>">
-                    Tags: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_tags[<?php echo $label ?>]"
-                                 name="gdrive_to_posts_template_tags[<?php echo $label ?>]">
-                </label>
-            </div>
-            <?php
+        if (is_array($options)) {
+            foreach ($options as $label => $val) {
+                $args['selected'] = $val;
+                ?>
+                <div class="template-tags template-<?php echo $label ?>" style="display:none;">
+                    <label for="template-tags-<?php echo $label ?>">
+                        Tags: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_tags[<?php echo $label ?>]"
+                                     name="gdrive_to_posts_template_tags[<?php echo $label ?>]">
+                    </label>
+                </div>
+                <?php
+            }
         }
     }
 
@@ -393,20 +349,22 @@ class GDrive_To_Posts_Settings {
             'hide_if_empty'      => false,
             'echo'             => 1,
         );
-        $options = get_option( 'gdrive_to_posts_template_category', array());
 
-        foreach($options as $label => $val) {
-            $args['selected'] = intval($val);
-            $args['name'] = "gdrive_to_posts_template_category[{$label}]";
-            $args['id'] = "gdrive_to_posts_template_category[{$label}]";
-            ?>
-            <div class="template-category template-category-<?php echo $label ?>" style="display:none;">
-                <h3><?php _e('Categories:'); ?></h3>
-                <?php wp_dropdown_categories( $args ); ?>
-            </div>
-            <?php
+        $options = get_option( 'gdrive_to_posts_template_category' );
+
+        if (is_array($options)) {
+            foreach($options as $label => $val) {
+                $args['selected'] = intval($val);
+                $args['name'] = "gdrive_to_posts_template_category[{$label}]";
+                $args['id'] = "gdrive_to_posts_template_category[{$label}]";
+                ?>
+                <div class="template-category template-category-<?php echo $label ?>" style="display:none;">
+                    <h3><?php _e('Categories:'); ?></h3>
+                    <?php wp_dropdown_categories( $args ); ?>
+                </div>
+                <?php
+            }
         }
-
     }
 
 

@@ -39,6 +39,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         _this.templateSelect();
         _this.setupGoogleTestBtn();
         _this.setupTemplateTestBtn();
+        _this.deleteTemplateBtn();
       });
     }
 
@@ -223,6 +224,49 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
       }
 
       /**
+       * Click Handler for Google Test Button
+       */
+
+    }, {
+      key: 'deleteTemplateBtn',
+      value: function deleteTemplateBtn() {
+        var templateDeleteBtn = $('#gdrive-delete-template');
+        if (!templateDeleteBtn.length) {
+          return false;
+        }
+
+        templateDeleteBtn.on('click.gdrive-to-posts', function (evt) {
+          evt.preventDefault();
+          evt.stopPropagation();
+
+          // This button gets sheetID like the fields button (through the select change method).
+          var sheetLabel = $(this).data('sheet-label');
+          var data = {
+            action: 'gdrive_to_posts_delete_template',
+            nonce: gdriveToPosts.nonce,
+            sheet_label: sheetLabel
+          };
+
+          $.ajax({
+            url: gdriveToPosts.ajaxURL,
+            type: 'post',
+            dataType: 'json',
+            data: data,
+            complete: function complete(resp) {
+              var output = '';
+              if (!resp || (typeof resp === 'undefined' ? 'undefined' : _typeof(resp)) !== "object" || _typeof(resp.responseJSON) !== "object") {
+                output += '<h3>The server did not respond well.</h3>';
+              } else {
+                $('input[name$="[' + sheetLabel + ']"').remove();
+              }
+
+              //TODO: Setup what happens when delete goes through.
+            }
+          });
+        });
+      }
+
+      /**
        * Create CSS for a modal to show messages on the form.
        * @param message
        * @param type
@@ -254,7 +298,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         var $selectBox = $('select[name="choose-editor-template"]'),
             templateOptionLabel = 'gdrive_to_posts_template_body',
             titlesOptionLabel = 'gdrive_to_posts_template_title',
-            fetchFieldsBtn = $('#get-gdrive-sheet-field-names, #sheet-template-tester'),
+            variousBtnsWithInfo = $('#get-gdrive-sheet-field-names, #sheet-template-tester, #gdrive-delete-template'),
             fieldsExplaination = $('.gdrive-template-fields-explanation'),
             outputElem = $('.gdrive-template-fields-listings');
 
@@ -293,12 +337,12 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             updateTextEditor('');
             // empty the title val
             title.$.val('');
-            fetchFieldsBtn.data('sheet-label', '').hide();
+            variousBtnsWithInfo.data('sheet-label', '').hide();
             console.log('changing content in the editor to nothing.');
             return false;
           }
           // We only want to see this button when there is a file id to show.
-          fetchFieldsBtn.show().data('sheet-label', selectedOption);
+          variousBtnsWithInfo.show().data('sheet-label', selectedOption);
 
           desiredTemplate.name = templateOptionLabel + '[' + selectedOption + ']';
           desiredTemplate.$ = hiddenTemplateFields.find('input[name="' + desiredTemplate.name + '"]');
