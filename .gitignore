@@ -4,5 +4,5 @@ gulpfile.js
 .idea
 .babelrc
 mikes*
-*.p21
+*.p12
 bower_components

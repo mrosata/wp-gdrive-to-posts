@@ -70,12 +70,32 @@ class Gdrive_to_posts_Admin {
      */
 	function add_admin_menu() {
 
-		add_menu_page(
+		$hook = add_menu_page(
             'Google Drive to Posts', 'Google Drive to Posts Menu', 'manage_options',
             'gdrive_to_posts', array( $this->settings_page, 'gdrive_to_posts_options_page')
 		);
+
 	}
 
+
+	function handle_upload_key_file ( ) {
+
+        // You should also check filesize here.
+        if ($_FILES['file']['size'] > 1000000) {
+            throw new \RuntimeException('Exceeded filesize limit.');
+        }
+
+        // On this example, obtain safe unique name from its binary data.
+        if (!move_uploaded_file(
+            $_FILES['file']['tmp_name'],
+            plugin_dir_path(__FILE__) . 'key/gdrive-file-key.p12'
+        )) {
+            echo json_encode(array('success'=>0));
+            exit;
+        }
+        echo json_encode(array('success'=>1));
+        exit;
+	}
 
 	/**
 	 * Build the settings page.
@@ -178,6 +198,8 @@ class Gdrive_to_posts_Admin {
             }
 			register_setting( $gdrive_api_option_group, "gdrive_to_posts_template_{$setting}" );
 		}
+		// This is the setting to change the file for key.
+		register_setting( $gdrive_api_option_group, 'gdrive_update_key_file' );
 
 		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_settings' );
 
@@ -226,11 +248,18 @@ class Gdrive_to_posts_Admin {
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/gdrive_to_posts-admin.js', array( 'jquery' ), $this->version, false );
-		wp_localize_script($this->plugin_name, 'gdriveToPosts', array(
-				'nonce' => wp_create_nonce('gdrive_to_posts_add-new-template'),
-				'ajaxURL' => admin_url( 'admin-ajax.php' )
-		));
+
+        $prefix = 'gdrive' . time();
+        wp_enqueue_script( $prefix . 'files1', plugin_dir_url( __FILE__ ) . 'js/jQuery-File-Upload/js/vendor/jquery.ui.widget.js', array( 'jquery' ), $this->version, false );
+        wp_enqueue_script( $prefix . 'files2', plugin_dir_url( __FILE__ ) . 'js/jQuery-File-Upload/js/jquery.iframe-transport.js', array( $prefix . 'files1' ), $this->version, false );
+        wp_enqueue_script( $prefix . 'files3', plugin_dir_url( __FILE__ ) . 'js/jQuery-File-Upload/js/jquery.fileupload.js', array( $prefix . 'files1' ), $this->version, false );
+
+        wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/gdrive_to_posts-admin.js', array( 'jquery', $prefix. 'files3' ), $this->version, false );
+        wp_localize_script($this->plugin_name, 'gdriveToPosts', array(
+            'nonce' => wp_create_nonce('gdrive_to_posts_add-new-template'),
+            'ajaxURL' => admin_url( 'admin-ajax.php' )
+        ));
+
 
 	}
 

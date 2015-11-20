@@ -202,6 +202,19 @@ class Gdrive_to_posts {
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_parse_through_template', $plugin_admin, 'test_template' );
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_delete_template', $plugin_admin, 'delete_template' );
 
+		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_key_file_upload', $plugin_admin, 'handle_upload_key_file' );
+
+
+
+
+		function do_on_my_plugin_settings_save()
+		{
+			if(isset($_GET['settings-updated']) && $_GET['settings-updated'])
+			{
+				//plugin settings have been saved. Here goes your code
+			}
+		}
+
 	}
 
 	/**

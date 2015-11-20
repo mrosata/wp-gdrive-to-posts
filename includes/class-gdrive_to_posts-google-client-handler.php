@@ -58,7 +58,8 @@ class Google_Client_Handler
                 $client_email = $this->api_email;
                 $key_file = $this->key_file;
 
-                $private_key = file_get_contents(plugin_dir_path( dirname( __FILE__ ) ) . $key_file);
+                $private_key = file_get_contents(plugin_dir_path( dirname( __FILE__ ) ) . 'admin/key/' . $key_file);
+
                 $scopes = array(
                     'https://www.googleapis.com/auth/drive',
                     'https://www.googleapis.com/auth/sqlservice.admin',
@@ -86,6 +87,7 @@ class Google_Client_Handler
 
             return $this->google_client;
         } catch (\Google_Auth_Exception $e) {
+            echo var_export($e);
             // The Google Auth didn't go through
             $this->google_client = null;
         }

@@ -26,8 +26,36 @@
         this.setupGoogleTestBtn();
         this.setupTemplateTestBtn();
         this.deleteTemplateBtn();
+        this.setupUploadButton();
       });
     }
+
+    setupUploadButton() {
+      var fileUpload = $('input[name="file"]');
+      if (fileUpload.length) {
+        fileUpload.fileupload({
+          // Uncomment the following to send cross-domain cookies:
+          //xhrFields: {withCredentials: true},
+          url: gdriveToPosts.ajaxURL,
+          submit: function (e, data) {
+            var $this = $(this);
+
+            /*
+            $.getJSON('/example/url', function (result) {
+              data.formData = result; // e.g. {id: 123}
+              data.jqXHR = $this.fileupload('send', data);
+            });*/
+            data.formData = {
+              action: 'gdrive_to_posts_key_file_upload',
+              nonce: gdriveToPosts.nonce
+            };
+            data.jqXHR = $this.fileupload('send', data);
+            return false;
+          }
+        });
+      }
+    }
+
 
     /**
      * Call Ajax hook to parse the top row of an CSV and get the fields back to show the user.
@@ -501,3 +529,5 @@ function firstDefined(...vals) {
     }
   }
 }
+
+

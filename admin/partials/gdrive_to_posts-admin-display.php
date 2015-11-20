@@ -16,26 +16,8 @@
 
 
 namespace gdrive_to_posts;
-/*
-function gdrive_to_posts_checkbox_field_3_render(  ) {
-
-    $options = get_option( 'gdrive_to_posts_settings' );
-    ?>
-    <input type='checkbox' name='gdrive_to_posts_settings[gdrive_to_posts_checkbox_field_3]' <?php checked( $options['gdrive_to_posts_checkbox_field_3'], 1 ); ?> value='1'>
-    <?php
-
-}
 
 
-function gdrive_to_posts_radio_field_4_render(  ) {
-
-    $options = get_option( 'gdrive_to_posts_settings' );
-    ?>
-    <input type='radio' name='gdrive_to_posts_settings[gdrive_to_posts_radio_field_4]' <?php checked( $options['gdrive_to_posts_radio_field_4'], 1 ); ?> value='1'>
-    <?php
-
-}
-*/
 class GDrive_To_Posts_Settings {
 
     private $google_drive;
@@ -154,6 +136,7 @@ class GDrive_To_Posts_Settings {
             update_option('gdrive_to_posts_settings', $options);
         }
         ?><input name="gdrive_to_posts_settings[key_file_location]" type="text" value="<?php echo $options['key_file_location'] ?>"><?php
+        ?><input name="file" type="file" value=""><?php
     }
 
 
