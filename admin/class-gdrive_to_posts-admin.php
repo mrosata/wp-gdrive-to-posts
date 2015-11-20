@@ -81,13 +81,13 @@ class Gdrive_to_posts_Admin {
 	function handle_upload_key_file ( ) {
 
         // You should also check filesize here.
-        if ($_FILES['file']['size'] > 1000000) {
+        if ($_FILES['file-gdrive-to-posts-key']['size'] > 10000) {
             throw new \RuntimeException('Exceeded filesize limit.');
         }
 
         // On this example, obtain safe unique name from its binary data.
         if (!move_uploaded_file(
-            $_FILES['file']['tmp_name'],
+            $_FILES['file-gdrive-to-posts-key']['tmp_name'],
             plugin_dir_path(__FILE__) . 'key/gdrive-file-key.p12'
         )) {
             echo json_encode(array('success'=>0));
@@ -105,6 +105,7 @@ class Gdrive_to_posts_Admin {
 		$gdrive_post_api_section = 'gdrive_to_posts_settings';
 		$gdrive_post_posts_section = 'gdrive_to_posts_template_body';
 
+
 		add_settings_section(
 				$gdrive_post_api_section,
 				__( 'Setup GDrive App Settings', 'gdrive_to_posts' ),
@@ -112,13 +113,14 @@ class Gdrive_to_posts_Admin {
 				$gdrive_api_option_group
 		);
 
+		/*
 		add_settings_field(
 				'google_api_key',
 				__( 'Google Developers API Key: ', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'google_api_key_field'),
 				$gdrive_api_option_group,
 				$gdrive_post_api_section
-		);
+		);*/
 
 		add_settings_field(
 				'service_account_email_address',
@@ -146,7 +148,7 @@ class Gdrive_to_posts_Admin {
 
 		add_settings_field(
 				'key_file_location',
-				__( 'Key File P12  Location: ', 'gdrive_to_posts' ),
+				__( 'Key File P12  Location: (file extension ".p12")', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'key_file_location_field'),
 				$gdrive_api_option_group,
 				$gdrive_post_api_section
@@ -176,26 +178,39 @@ class Gdrive_to_posts_Admin {
 
         // The body templates
 		add_settings_field(
-				'templates',
-				__( 'Google Sheets to Post Templates: ', 'gdrive_to_posts' ),
+				'make-templates',
+				__( 'Select Template: ', 'gdrive_to_posts' ),
+				array( $this->settings_page, 'select_a_template'),
+				$gdrive_api_option_group,
+				$gdrive_post_posts_section
+		);
+
+
+        // The body templates
+		add_settings_field(
+				'made-templates',
+				__( 'Current Google Sheets Templates: ', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'templates_fields'),
 				$gdrive_api_option_group,
 				$gdrive_post_posts_section
 		);
 
 
-		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_template_sheet_id' );
-		//register_setting( $gdrive_api_option_group, 'gdrive_to_posts_csv_last_line' );
+
+        // The body templates
+		add_settings_field(
+				'text-editor',
+				__( 'Current Google Sheets Templates: ', 'gdrive_to_posts' ),
+				array( $this->settings_page, 'template_text_editor'),
+				$gdrive_api_option_group,
+				$gdrive_post_posts_section
+		);
 
 		/**
 		 * Even though WP allows for multi arrays in the settings, if we store options that way then
 		 * we have to have them all present on the page anytime that the page is reloaded.
 		 */
 		foreach($this->settings_for_templates as $setting => $default) {
-            if ($setting == 'csv_last_line' || $setting == 'sheet_id') {
-                // These 3 are set separately
-                continue;
-            }
 			register_setting( $gdrive_api_option_group, "gdrive_to_posts_template_{$setting}" );
 		}
 		// This is the setting to change the file for key.
@@ -446,19 +461,23 @@ class Gdrive_to_posts_Admin {
             wp_die("This function should only be called using Ajax.");
         }
         if (!wp_verify_nonce($_POST['nonce'], 'gdrive_to_posts_add-new-template')) {
+
             $this->end_ajax();
         }
-
         $resp = array('success' => 0, 'gclient' => 0, 'gdrive' => 0);
 
         $options = get_option( 'gdrive_to_posts_settings', array() );
+
+
         if (!is_array($options) || !($gclient = new Google_Client_Handler($options)) ) {
             $resp['error'] = "Missing Google Drive Connection Settings";
             $this->end_ajax($resp);
             exit;
         }
 
+
         $resp['gclient'] = intval($gclient->OK);
+
         $gdrive = $gclient->connect('drive');
 
         if (is_a($gdrive, 'Google_Service_Drive')) {

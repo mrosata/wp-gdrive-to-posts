@@ -61,9 +61,13 @@ class GDrive_To_Posts_Settings {
         }
 
         ?>
-
+        <div class="container-fluid">
+        <div class="row">
+        <div class="col-xs-12 col-sm-10 col-md-5 col-lg-4">
         <input type='text' id='gdrive_to_posts_settings[google_api_key]' name='gdrive_to_posts_settings[google_api_key]' value='<?php echo $options['google_api_key']; ?>'>
-
+        </div>
+        </div>
+        </div>
         <?php
 
     }
@@ -80,8 +84,13 @@ class GDrive_To_Posts_Settings {
 
         ?>
 
+        <div class="container-fluid">
+        <div class="row">
+        <div class="col-xs-12 col-sm-10 col-md-5 col-lg-4">
         <input type='text' name='gdrive_to_posts_settings[service_account_email_address]' value='<?php echo $options['service_account_email_address']; ?>'>
-
+        </div>
+        </div>
+        </div>
         <?php
 
     }
@@ -97,9 +106,13 @@ class GDrive_To_Posts_Settings {
         }
 
         ?>
-
+        <div class="container-fluid">
+        <div class="row">
+        <div class="col-xs-12 col-sm-10 col-md-5 col-lg-4">
         <input type='text' name='gdrive_to_posts_settings[service_certificate_fingerprints]' value='<?php echo $options['service_certificate_fingerprints']; ?>'>
-
+        </div>
+        </div>
+        </div>
         <?php
 
     }
@@ -113,6 +126,11 @@ class GDrive_To_Posts_Settings {
             update_option('gdrive_to_posts_settings', $options);
         }
         ?>
+
+        <div class="container-fluid">
+        <div class="row">
+        <div class="col-xs-6 col-sm-8 col-md-3 col-lg-2">
+
         <select name='gdrive_to_posts_settings[fetch_interval]'>
             <option value='' <?php selected( $options['fetch_interval']); ?>><?php _e('Choose Approximate Interval', 'gdrive_to_posts') ?></option>
             <option value='often' <?php selected( $options['fetch_interval'], 'often' ); ?>><?php _e('About 10 Minutes', 'gdrive_to_posts') ?></option>
@@ -120,6 +138,10 @@ class GDrive_To_Posts_Settings {
             <option value='twicedaily' <?php selected( $options['fetch_interval'], 'twicedaily'); ?>><?php _e('Noon and midnight', 'gdrive_to_posts') ?></option>
             <option value='daily' <?php selected( $options['fetch_interval'], 'daily'); ?>><?php _e('Daily at midnight', 'gdrive_to_posts') ?></option>
         </select>
+
+        </div>
+        </div>
+        </div>
         <?php
 
     }
@@ -127,7 +149,9 @@ class GDrive_To_Posts_Settings {
 
     /**
      *  The location for the p12 Google Service Key
-     * //todo: this should become a type=file
+     *   -- This used to be text input that pointed to a file, and it is for now a hidden field because now there
+     *      is just 1 file with 1 name, so rather then remove this, for now I'll leave it especially because the
+     *      file upload is here.
      */
     public function key_file_location_field( ) {
         $options = get_option( 'gdrive_to_posts_settings' );
@@ -135,15 +159,32 @@ class GDrive_To_Posts_Settings {
             $options['key_file_location'] =  '';
             update_option('gdrive_to_posts_settings', $options);
         }
-        ?><input name="gdrive_to_posts_settings[key_file_location]" type="text" value="<?php echo $options['key_file_location'] ?>"><?php
-        ?><input name="file" type="file" value=""><?php
+        ?>
+
+        <div class="container-fluid">
+        <div class="row">
+        <div class="col-xs-6 col-sm-8 col-md-3 col-lg-2">
+
+        <input name="gdrive_to_posts_settings[key_file_location]" type="hidden" value="gdrive-file-key.p12">
+        <label for="file-gdrive-to-posts-key">
+        <span class="gdrive-btn-file"><?php _e(' Upload File ', 'gdrive_to_posts') ?>
+        <input name="file-gdrive-to-posts-key" type="file" value="">
+        </span>
+        </label>
+
+        </div>
+        </div>
+        </div>
+        <?php
     }
 
 
 
     public function create_new_template_fields( ) {
         ?>
-
+        <div class="container-fluid">
+        <div class="row">
+        <div class="col-xs-8 col-sm-6 col-md-4 col-lg-3">
         <div class="form-group">
 
             <label for="gdrive-to-posts-new-file-id">
@@ -163,7 +204,10 @@ class GDrive_To_Posts_Settings {
 
         <button id="gdriveToPostsAddNewTemplateBtn" class="button button-primary" type="button" value="add_template"><?php _e('Add Template', 'gdrive_to_posts') ?>
         </button>
-        <hr>
+        </div>
+        </div>
+        </div>
+
         <?php
 
     }
@@ -175,7 +219,7 @@ class GDrive_To_Posts_Settings {
      * well as a template so they take up 2 fields and will be looped for how ever many types of
      * posts the user sets up.
      */
-    public function templates_fields( ) {
+    public function select_a_template( ) {
 
         $options = get_option( 'gdrive_to_posts_template_body');
 
@@ -184,17 +228,18 @@ class GDrive_To_Posts_Settings {
             update_option('gdrive_to_posts_template_body', $options);
         }
 
-        ?><div id="gdrive-to-posts-templates"><?php
+        ?>
 
-        $hidden_inputs = '';
+        <div class="container-fluid">
+        <div class="row">
+        <div class="col-xs-6 col-sm-8 col-md-3 col-lg-2" id="gdrive-to-posts-templates">
+        <?php
+
         $chose_template = __('Choose a template', 'gdrive_to_posts');
         echo "<label>Select a template<select name='choose-editor-template'>\n\t<option value='' selected>{$chose_template}</option>\n";
         foreach ($options as $key => $template) {
             // print out the options for this template.
             echo "\t<option value='{$key}'>{$key}</option>\n";
-
-            $template = esc_textarea($template);
-            $hidden_inputs .= "<input type='hidden' id='gdrive_to_posts_template_body[{$key}]' name='gdrive_to_posts_template_body[{$key}]' value='{$template}'>";
         }
         ?>
         </select></label>
@@ -202,8 +247,29 @@ class GDrive_To_Posts_Settings {
         <button class='button button-primary' type='button' id='get-gdrive-sheet-field-names'>Fetch Field Names</button>
 
         </div>
+        </div>
+        </div>
+
+        <?php
+        }
 
 
+        public function templates_fields() {
+
+         $options = get_option( 'gdrive_to_posts_template_body');
+
+        if (!is_array($options)) {
+            $options = array();
+            update_option('gdrive_to_posts_template_body', $options);
+        }
+
+        $hidden_inputs = '';
+        foreach ($options as $key => $template) {
+            $template = esc_textarea($template);
+            $hidden_inputs .= "<input type='hidden' id='gdrive_to_posts_template_body[{$key}]' name='gdrive_to_posts_template_body[{$key}]' value='{$template}'>";
+        }
+
+        ?>
         <div class="gdrive-template-fields-explanation open">
             <p>
                 The <span class="gdrive-bold">"Fetch Field Names"</span> button will show your custom variables which are available for
@@ -219,6 +285,8 @@ class GDrive_To_Posts_Settings {
                 <dd><code>{!#</code><em>number</em><code>#!}</code></dd>
             </dl>
         </div>
+
+
 
         <div class='gdrive-template-fields-listings'>
 
@@ -238,15 +306,17 @@ class GDrive_To_Posts_Settings {
         // These hidden inputs hold the values of each template so we can pull their value into the mce editor if the user wants
         // to edit the template body and then when the 'save changes' button is pushed they will all update.
         echo "<div id='gdrive-hidden-templates'>{$hidden_inputs}</div>";
-        echo "<table>";
+    }
 
+
+    /**
+     * The template wp editor
+     */
+    public function template_text_editor () {
         $editor_id = "gdrive_to_posts_template_body-editor";
         wp_editor('<h1>GDrive to Posts v0.1.0</h1><ul><li>Create a new template by entering a label and Sheets file ID in the boxes above</li>'
             . '<li>If you\'ve already created some templates you may switch between them using the dropdown above me!</li></ul>'
             , $editor_id, array('textarea_name'=> ' ') );
-        echo "</table>";
-
-
     }
 
 
@@ -264,6 +334,8 @@ class GDrive_To_Posts_Settings {
             <div class="template-field-container template-<?php echo $label ?>" style="display:none">
 
             <?php
+            $this->build_template_sheet_id( $label );
+            $this->build_template_csv_last_line( $label );
             $this->build_template_data_field( $label );
             $this->build_template_category_dropdown( $label );
             $this->build_template_author_select( $label );
@@ -293,18 +365,68 @@ class GDrive_To_Posts_Settings {
         if (is_array($options)) {
             foreach ($options as $label => $val) {
                 ?>
-                <div class="template-field-container template-<?php echo $label ?>" style="display:none">
+
+        <div class="container-fluid template-field-container template-<?php echo $label ?>" style="display:none">
+        <div class="row">
+        <div class="col-xs-8 col-sm-6 col-md-4 col-lg-3">
                 <?php
+                $this->build_template_sheet_id( $label );
+                $this->build_template_csv_last_line( $label );
                 $this->build_template_data_field( $label );
+                ?>
+                </div>
+                </div>
+                <div class="row">
+                <div class="col-xs-8 col-sm-6 col-md-4 col-lg-3">
+                <?php
                 $this->build_template_category_dropdown( $label );
                 $this->build_template_author_select( $label );
                 $this->build_template_tags_input( $label );
                 $this->build_template_title_input( $label );
                 ?>
                 </div>
+                </div>
+                </div> <!--  end the .template-field-container -->
                 <?php
             }
         }
+    }
+
+    function build_template_sheet_id( $label ) {
+
+        $options = get_option('gdrive_to_posts_template_sheet_id', array());
+
+        if (is_array($options)) {
+            $val = $options[ $label ];
+            ?>
+            <div class="template-sheet_id">
+                <label for="template-sheet_id<?php echo $label ?>"><?php _e('Sheet ID: ', 'gdrive_to_posts') ?>
+                    <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_sheet_id[<?php echo $label ?>]"
+                                  name="gdrive_to_posts_template_sheet_id[<?php echo $label ?>]">
+                </label>
+            </div>
+            <?php
+        }
+
+    }
+
+
+    function build_template_csv_last_line( $label ) {
+
+        $options = get_option('gdrive_to_posts_template_csv_last_line', array());
+
+        if (is_array($options)) {
+            $val = $options[ $label ];
+            ?>
+            <div class="template-csv_last_line">
+                <label for="template-csv_last_line-<?php echo $label ?>"><?php _e('Last Line Read: ', 'gdrive_to_posts') ?>
+                    <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_csv_last_line[<?php echo $label ?>]"
+                                  name="gdrive_to_posts_template_csv_last_line[<?php echo $label ?>]">
+                </label>
+            </div>
+            <?php
+        }
+
     }
 
     /**
@@ -469,7 +591,7 @@ class GDrive_To_Posts_Settings {
 
         <section class="wrap">
             <div class="gdrive-to-posts-options">
-                <form action='options.php' method='post'>
+                <form action='options.php' method='post' class="gdrive-to-posts-settings">
                     <h2>Google Drive to Posts</h2>
                     <table class="form-table">
                         <?php

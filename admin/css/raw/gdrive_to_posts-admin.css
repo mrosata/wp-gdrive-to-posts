@@ -970,17 +970,24 @@ table th[class*="col-"] {
 
 
 /* My custom */
+.gdrive-to-posts-settings input[type="text"], .gdrive-to-posts-settings select {
+    width: 100%;
+}
 .gdrive-to-posts-modal {
     box-sizing: border-box;
     background-color: #FAEBD7;
+    border-radius: 0.3em;
+    border-radius: 0.3rem;
+    z-index: 2000;
     position: fixed;
     padding: 1.7em;
     text-align: center;
     display: none;
-    top: 30%;
-    left: 20%;
-    right: 20%;
+    top: 37.5%;
+    left: 50%;
+    transform: translateX(-50%);
 }
+
 
 .google-client-test-btn {
     display: none;
@@ -1032,4 +1039,54 @@ span.pass {
 }
 hr {
     border-color: #DEDEDE;
+}
+
+.gdrive-btn-file {
+    display: inline-block;
+    text-decoration: none;
+    font-size: 13px;
+    line-height: 26px;
+    height: 28px;
+    margin: 0;
+    padding: 0 10px 1px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+    white-space: nowrap;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    background: #0091cd;
+    border: 1px solid #0073aa;
+    -webkit-box-shadow: inset 0 1px 0 rgba(120,200,230,.6);
+    box-shadow: inset 0 1px 0 rgba(120,200,230,.6);
+    color: #fff;
+}
+.gdrive-btn-file:hover {
+    background: #006ca2;
+    border-color: #006ca2;
+    -webkit-box-shadow: inset 0 1px 0 rgba(144, 230, 224, 0.6);
+    box-shadow: inset 0 1px 0 rgba(120,200,230,.6);
+    color: #fffbfb;
+}
+
+.gdrive-btn-file input[type=file] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 100%;
+    min-height: 100%;
+    font-size: 100px;
+    text-align: right;
+    filter: alpha(opacity=0);
+    opacity: 0;
+    outline: none;
+    background: white;
+    cursor: inherit;
+    display: block;
+}
+input[type="file"][name="file-gdrive-to-posts-key"] {
 }

@@ -4,5 +4,8 @@ gulpfile.js
 .idea
 .babelrc
 mikes*
+mikes map-*
 *.p12
 bower_components
+admin/key/*
+admin/css/raw/*

@@ -31,9 +31,10 @@
     }
 
     setupUploadButton() {
-      var fileUpload = $('input[name="file"]');
+      var fileUpload = $('input[name="file-gdrive-to-posts-key"]');
       if (fileUpload.length) {
-        fileUpload.fileupload({
+        let _self = this;
+        let fileXHR = fileUpload.fileupload({
           // Uncomment the following to send cross-domain cookies:
           //xhrFields: {withCredentials: true},
           url: gdriveToPosts.ajaxURL,
@@ -50,9 +51,23 @@
               nonce: gdriveToPosts.nonce
             };
             data.jqXHR = $this.fileupload('send', data);
+            data.jqXHR.complete(function(resp) {
+              console.log(resp);
+              if (resp.readyState === 4 && !!resp.responseText) {
+                resp = JSON.parse(resp.responseText);
+                if (resp && resp.success == 1) {
+                  _self.displayModal('Awesome! You uploaded a file')
+                } else {
+                  _self.displayModal('Aw Butt! It didn\'t work', 'failure');
+                }
+              } else {
+                _self.displayModal('Aw Butt! It didn\'t work', 'failure');
+              }
+            });
             return false;
           }
         });
+
       }
     }
 
@@ -95,7 +110,7 @@
                 } else {
                   resp = resp.responseJSON;
                   // Basically we should just be getting back a list of fields
-                  fields = resp.fields
+                  fields = resp.fields;
 
                   // Create the output for the fields if found
                   if (fields.length) {
@@ -298,7 +313,7 @@
         modal.css(css);
       }
       // hide the modal after being clicked
-      modal.one('click', () => {
+      $('body').one('click', () => {
         modal.css('display', 'none');
       });
     }

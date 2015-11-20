@@ -22,7 +22,6 @@ class Google_Client_Handler
     private $interval;
 
     private $config_opts = array(
-        'google_api_key',
         'service_account_email_address',
         'service_certificate_fingerprints',
         'key_file_location'

@@ -47,28 +47,46 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
     _createClass(TemplateAjaxClass, [{
       key: 'setupUploadButton',
       value: function setupUploadButton() {
-        var fileUpload = $('input[name="file"]');
-        if (fileUpload.length) {
-          fileUpload.fileupload({
-            // Uncomment the following to send cross-domain cookies:
-            //xhrFields: {withCredentials: true},
-            url: gdriveToPosts.ajaxURL,
-            submit: function submit(e, data) {
-              var $this = $(this);
+        var _this2 = this;
 
-              /*
-              $.getJSON('/example/url', function (result) {
-                data.formData = result; // e.g. {id: 123}
+        var fileUpload = $('input[name="file-gdrive-to-posts-key"]');
+        if (fileUpload.length) {
+          (function () {
+            var _self = _this2;
+            var fileXHR = fileUpload.fileupload({
+              // Uncomment the following to send cross-domain cookies:
+              //xhrFields: {withCredentials: true},
+              url: gdriveToPosts.ajaxURL,
+              submit: function submit(e, data) {
+                var $this = $(this);
+
+                /*
+                $.getJSON('/example/url', function (result) {
+                  data.formData = result; // e.g. {id: 123}
+                  data.jqXHR = $this.fileupload('send', data);
+                });*/
+                data.formData = {
+                  action: 'gdrive_to_posts_key_file_upload',
+                  nonce: gdriveToPosts.nonce
+                };
                 data.jqXHR = $this.fileupload('send', data);
-              });*/
-              data.formData = {
-                action: 'gdrive_to_posts_key_file_upload',
-                nonce: gdriveToPosts.nonce
-              };
-              data.jqXHR = $this.fileupload('send', data);
-              return false;
-            }
-          });
+                data.jqXHR.complete(function (resp) {
+                  console.log(resp);
+                  if (resp.readyState === 4 && !!resp.responseText) {
+                    resp = JSON.parse(resp.responseText);
+                    if (resp && resp.success == 1) {
+                      _self.displayModal('Awesome! You uploaded a file');
+                    } else {
+                      _self.displayModal('Aw Butt! It didn\'t work', 'failure');
+                    }
+                  } else {
+                    _self.displayModal('Aw Butt! It didn\'t work', 'failure');
+                  }
+                });
+                return false;
+              }
+            });
+          })();
         }
       }
 
@@ -343,7 +361,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
           modal.css(css);
         }
         // hide the modal after being clicked
-        modal.one('click', function () {
+        $('body').one('click', function () {
           modal.css('display', 'none');
         });
       }
@@ -490,7 +508,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
     }, {
       key: 'createNewTemplateBtn',
       value: function createNewTemplateBtn() {
-        var _this2 = this;
+        var _this3 = this;
 
         var $addNewButton = $('#gdriveToPostsAddNewTemplateBtn');
 
@@ -499,7 +517,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             var fileID = $('input[name="template-sheet-id"]').val(),
                 tempLabel = $('input[name="template-label"]').val();
             if (!fileID || !tempLabel) {
-              _this2.displayModal('Enter a Google Sheets File ID and Template Label please!', 'error');
+              _this3.displayModal('Enter a Google Sheets File ID and Template Label please!', 'error');
               return false;
             }
             // Disable the button
