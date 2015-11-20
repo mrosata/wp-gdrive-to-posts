@@ -35,7 +35,7 @@ class GDrive_to_Posts_Workhorse
     public function normalize_field($variable) {
         $variable = preg_replace('~(\s|-|/)~', '_', $variable);
         $variable = preg_replace("~[^a-zA-Z0-9]+~", "", $variable);
-        return trim(mb_strtoupper($variable));
+        return trim(strtoupper($variable));
     }
 
 
@@ -66,7 +66,7 @@ class GDrive_to_Posts_Workhorse
             if (!!$uri) {
                 // Get the file as text csv using the Google Drive Export method.
                 $csv = wp_remote_get( $uri );
-                @$csv = is_array($csv) ? $csv['body'] : null;
+                $csv = is_array($csv) ? $csv['body'] : null;
                 if (!$csv) {
                     return false;
                 }
@@ -86,6 +86,7 @@ class GDrive_to_Posts_Workhorse
         if (!$csv) {
             return false;
         }
+
         $this->csv_text = $csv;
     }
 
@@ -102,8 +103,11 @@ class GDrive_to_Posts_Workhorse
         }
 
         $keys = str_getcsv( (array_shift($csv_rows)), ',', '"');
+
         return array_map(function($val) {
-            return $this->normalize_field($val);
+            $val = preg_replace('~(\s|-|/)~', '_', $val);
+            $val = preg_replace("~[^a-zA-Z0-9]+~", "", $val);
+            return $val;
         }, $keys);
     }
 
@@ -140,7 +144,7 @@ class GDrive_to_Posts_Workhorse
     public function normalize_template($template_str) {
         //$template_str = "This will turn {!!sTuFf!!} into {!!STUFF!!}";
         $template_str = preg_replace_callback('/{!(!|#)([a-zA-Z0-9_]+)\1!}/mi', function($m) {
-            return mb_strtoupper($m[0]);
+            return strtoupper($m[0]);
         }, $template_str);
 
         return $template_str;
@@ -162,24 +166,23 @@ class GDrive_to_Posts_Workhorse
      * @return string
      */
     private function parse_template( $template_str, $hide_unknown_variables = true ) {
-        // change the hide_unknown_variables on class so that it can be used inside anonymous function
-        $this->hide_unknown_variables = $hide_unknown_variables;
-        $output = preg_replace_callback('/{!(!|#)([a-zA-Z0-9_]+)\1!}/mi', function($match) {
 
-            $var_key = mb_strtoupper($match[2]);
+        $variables = array();
+        $strings = preg_split('/{!(!|#)([a-zA-Z0-9_]+)\1!}/mi', $template_str);
+        preg_match_all('/{!(!|#)([a-zA-Z0-9_]+)\1!}/mi', $template_str, $variables);
 
-            if (isset($var_key) && isset($this->current_row[$var_key])) {
-                return $this->current_row[$var_key];
-            }
-            if (!isset($this->current_row[$var_key]) && !$this->hide_unknown_variables) {
-                return $match[2];
-            }
-            return '';
-        }, $template_str);
+        $output = '';
+        $good_to_go = isset($variables[2]);
+        foreach($strings as $index => $text) {
+            $var = ($good_to_go && isset($variables[2][$index])) ? strtoupper($variables[2][$index]) : '';
+            $output .= $strings[$index] . (isset($var) && !empty($var) && isset($this->current_row[$var]) ? $this->current_row[$var] : '');
+        }
+        $variables = $output;
 
         // Put hide_unknown_variables back to its default setting
         $this->hide_unknown_variables = true;
-        return $output;
+
+        return $variables;
     }
 
 
@@ -216,6 +219,8 @@ class GDrive_to_Posts_Workhorse
             return false;
         }
 
+
+
         $all_last_lines = get_option('gdrive_to_posts_template_csv_last_line');
         if (!is_array($all_last_lines) || (!$this->testing && $all_last_lines[$sheet_label] != $stored_last_line)) {
             // Either we don't have last lines or we aren't testing and the last line passed doesn't match!
@@ -230,8 +235,12 @@ class GDrive_to_Posts_Workhorse
         $post_status = $this->testing ? 'draft' : 'publish';
         // Row 1 becomes our keys for every other row, needed for templating.
         $keys = str_getcsv( (array_shift($csv_rows)), ',', '"');
-        $keys = array_map(function($val) {
-            return $this->normalize_field($val);
+
+        $keys = array_map(function($variable) {
+            $variable = preg_replace('~(\s|-|/)~', '_', $variable);
+            $variable = preg_replace("~[^a-zA-Z0-9]+~", "", $variable);
+            $variable = strtoupper($variable);
+            return $variable;
         }, $keys);
 
         // Parse through rows up to max, set at 10 by default, set it to no max the user can just pass $max=0

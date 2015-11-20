@@ -522,11 +522,11 @@ class Gdrive_to_posts_Admin {
 			$gdrive = 'treat_as_uri';
 		}
 
+
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
         if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $template, $title_template, $author, $tags, $category, $last_line, 5)) {
             // We want to see the output here.
-
             $this->end_ajax(array('success'=>1, 'output'=>$output));
         }
         else {
