@@ -165,7 +165,7 @@ class GDrive_to_Posts_Workhorse
      * @param bool $hide_unknown_variables - no value found for variable name then replace it with empty string.
      * @return string
      */
-    private function parse_template( $template_str, $hide_unknown_variables = true ) {
+    private function parse_template( $template_str, $links_to_url = false, $hide_unknown_variables = true ) {
 
         $variables = array();
         $strings = preg_split('/{!(!|#)([a-zA-Z0-9_]+)\1!}/mi', $template_str);
@@ -177,12 +177,17 @@ class GDrive_to_Posts_Workhorse
             $var = ($good_to_go && isset($variables[2][$index])) ? strtoupper($variables[2][$index]) : '';
             $output .= $strings[$index] . (isset($var) && !empty($var) && isset($this->current_row[$var]) ? $this->current_row[$var] : '');
         }
-        $variables = $output;
+
+        // Convert URLs into links (unless they are in html attributes
+        // taken from http://stackoverflow.com/questions/12538358/convert-url-to-links-from-string-except-if-they-are-in-an-attribute-of-an-html-t
+        if ($links_to_url) {
+            $output = preg_replace('$(https?://)([a-z0-9_./?=&#-]+)(?![^<>]*>)$i', ' <a href="$1$2" target="_blank">$2</a> ', $output." ");
+            $output = preg_replace('$(www\.[a-z0-9_./?=&#-]+)(?![^<>]*>)$i', '<a target="_blank" href="http://$1"  target="_blank">$1</a> ', $output." ");
+        }
 
         // Put hide_unknown_variables back to its default setting
         $this->hide_unknown_variables = true;
-
-        return $variables;
+        return $output;
     }
 
 
@@ -203,7 +208,7 @@ class GDrive_to_Posts_Workhorse
      * @return bool|null|string
      * @throws \Exception
      */
-    public function parse_file($gdrive, $sheet_label, $sheet_id, $content_template, $title_template, $author = 1, $the_tags = '', $category = 1, $stored_last_line = 1, $n_tests = 0 ) {
+    public function parse_file($gdrive, $sheet_label, $sheet_id, $post_status, $content_template, $title_template, $author = 1, $the_tags = '', $category = 1, $urls_to_links = true, $stored_last_line = 1, $n_tests = 0 ) {
         // $gdrive is either \Google_Service_Drive or string == 'treat_as_uri'
         if (!$this->get($gdrive, $sheet_id)) {
             echo "returning because no sheet id / file";
@@ -232,7 +237,7 @@ class GDrive_to_Posts_Workhorse
 
         $output = '';
         $row_number = 1;
-        $post_status = $this->testing ? 'draft' : 'publish';
+
         // Row 1 becomes our keys for every other row, needed for templating.
         $keys = str_getcsv( (array_shift($csv_rows)), ',', '"');
 
@@ -274,7 +279,7 @@ class GDrive_to_Posts_Workhorse
             $this->current_row = $entry;
             // Use parse_template to switch out {{!!!!}} for the data in $this->current_row which is implicitly in the
             // parse_template() method as it is part of this class GDrive_to_Posts_Workhorse
-            $content = $this->parse_template($content_template);
+            $content = $this->parse_template($content_template, $urls_to_links);
             $title = $this->parse_template($title_template);
             $the_tags = $this->parse_template($the_tags);
 
@@ -349,6 +354,8 @@ class GDrive_to_Posts_Workhorse
             $this->work_done[] = $post;
         }
 
+        // remove all filters is so that iframes will work
+        remove_all_filters("content_save_pre");
         // Insert the post into the database
         $id = wp_insert_post( $post );
 

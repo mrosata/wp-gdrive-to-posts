@@ -40,14 +40,16 @@ class Gdrive_to_posts_Admin {
 	private $gdrive;
 	private $gclient;
 	private $settings_for_templates = array(
+			'data' => 0,
+			'url_to_links' => 1,
 			'category' => 0,
 			'tags' => '',
 			'author' => 1,
-			'data' => 0,
 			'sheet_id' => '',
 			'csv_last_line' => 1,
 			'title' => '',
-			'body' => ''
+		    'post_status' => '',
+			'body' => '',
 	);
 
 
@@ -112,15 +114,6 @@ class Gdrive_to_posts_Admin {
 				array( $this->settings_page, 'google_settings_section_callback'),
 				$gdrive_api_option_group
 		);
-
-		/*
-		add_settings_field(
-				'google_api_key',
-				__( 'Google Developers API Key: ', 'gdrive_to_posts' ),
-				array( $this->settings_page, 'google_api_key_field'),
-				$gdrive_api_option_group,
-				$gdrive_post_api_section
-		);*/
 
 		add_settings_field(
 				'service_account_email_address',
@@ -196,6 +189,15 @@ class Gdrive_to_posts_Admin {
 		);
 
 
+        // The body templates
+        add_settings_field(
+            'delete_template',
+            '',
+            array( $this->settings_page, 'delete_template_button'),
+            $gdrive_api_option_group,
+            $gdrive_post_posts_section
+        );
+
 
         // The body templates
 		add_settings_field(
@@ -206,6 +208,7 @@ class Gdrive_to_posts_Admin {
 				$gdrive_post_posts_section
 		);
 
+
 		/**
 		 * Even though WP allows for multi arrays in the settings, if we store options that way then
 		 * we have to have them all present on the page anytime that the page is reloaded.
@@ -215,11 +218,10 @@ class Gdrive_to_posts_Admin {
 		}
 		// This is the setting to change the file for key.
 		register_setting( $gdrive_api_option_group, 'gdrive_update_key_file' );
-
 		register_setting( $gdrive_api_option_group, 'gdrive_to_posts_settings' );
 
-
 	}
+
 
 
 	/**
@@ -509,6 +511,7 @@ class Gdrive_to_posts_Admin {
 
 		// TODO: This is done 2 times, create a function to pull out these options. Or have the function that consumes them do it
         $sheet_label = esc_attr($_POST['sheet_label']);
+        $post_status_opts = get_option('gdrive_to_posts_template_post_status' );
         $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
         $stored_templates = get_option('gdrive_to_posts_template_body' );
         $title_templates = get_option('gdrive_to_posts_template_title' );
@@ -517,9 +520,15 @@ class Gdrive_to_posts_Admin {
         $category_templates = get_option('gdrive_to_posts_template_category' );
         $stored_last_lines = get_option('gdrive_to_posts_template_csv_last_line' );
 		$stored_treat_as_uri_data = get_option('gdrive_to_posts_template_data' );
+		$urls_to_links = get_option('gdrive_to_posts_template_url_to_links' );
 
 
         $sheet_id = $options_sheet_id[$sheet_label];
+        $post_status = (string)$post_status_opts[$sheet_label];
+        if (!$post_status) {
+            // If we're not going to publish/draft/private then no point
+            $this->end_ajax();
+        }
         $template = $stored_templates[$sheet_label];
         $title_template = $title_templates[$sheet_label];
         $author = $author_templates[$sheet_label];
@@ -527,6 +536,7 @@ class Gdrive_to_posts_Admin {
         $category = $category_templates[$sheet_label];
         $last_line = intval($stored_last_lines[$sheet_label]);
 		$treat_as_uri = isset($stored_treat_as_uri_data[$sheet_label]) ? boolval($stored_treat_as_uri_data[$sheet_label]) : false;
+		$link_urls = isset($urls_to_links[$sheet_label]) ? boolval($urls_to_links[$sheet_label]) : true;
 
         if ( !is_string($sheet_id) || !is_string($template) || !is_string($title_template) || !$last_line) {
             $resp['error'] = "Sheet ID {$sheet_id} doesn't work!";
@@ -544,7 +554,7 @@ class Gdrive_to_posts_Admin {
 
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
-        if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $template, $title_template, $author, $tags, $category, $last_line, 5)) {
+        if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $post_status, $template, $title_template, $author, $tags, $category, $link_urls, $last_line, 5)) {
             // We want to see the output here.
             $this->end_ajax(array('success'=>1, 'output'=>$output));
         }
@@ -565,6 +575,7 @@ class Gdrive_to_posts_Admin {
 
 		// TODO: This is done 2 times, create a function to pull out these options. Or have the function that consumes them do it
         $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
+        $post_status_opts = get_option( 'gdrive_to_posts_template_post_status' );
         $bodies = get_option('gdrive_to_posts_template_body' );
         $titles = get_option('gdrive_to_posts_template_title' );
         $authors = get_option('gdrive_to_posts_template_author' );
@@ -572,11 +583,17 @@ class Gdrive_to_posts_Admin {
         $categories = get_option('gdrive_to_posts_template_category' );
         $last_lines = get_option('gdrive_to_posts_template_csv_last_line' );
 		$stored_treat_as_uri_data = get_option('gdrive_to_posts_template_data' );
+		$urls_to_links = get_option('gdrive_to_posts_template_url_to_links' );
 
         $sheet_labels = array_keys($options_sheet_id);
 
         foreach($sheet_labels as $sheet_label) {
             $sheet_label = esc_attr($sheet_label);
+            $post_status = (string)$post_status_opts[$sheet_label];
+            if ($post_status == '') {
+                // If we're not going to publish/draft/private then no point
+                continue;
+            }
             $author = intval($authors[$sheet_label]);
             $the_tags = $tags[$sheet_label];
             $category = $categories[$sheet_label];
@@ -584,7 +601,8 @@ class Gdrive_to_posts_Admin {
             $sheet_id = $options_sheet_id[$sheet_label];
             $template = $bodies[$sheet_label];
             $title_template = $titles[$sheet_label];
-			$treat_as_uri = boolval($stored_treat_as_uri_data[$sheet_label]);
+			$treat_as_uri = isset($stored_treat_as_uri_data[$sheet_label]) ? boolval($stored_treat_as_uri_data[$sheet_label]) : false;
+			$link_urls = isset($urls_to_links[$sheet_label]) ? boolval($urls_to_links[$sheet_label]) : true;
 
 			// We have to get connection on sheet to sheet basis.
 			if (!$treat_as_uri) {
@@ -604,7 +622,7 @@ class Gdrive_to_posts_Admin {
                 continue;
             }
 
-            if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $template, $title_template, $author, $the_tags, $category, $last_line)) {
+            if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $post_status, $template, $title_template, $author, $the_tags, $category, $link_urls, $last_line)) {
                 // We want to see the output here.
                 if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
                     echo $output;

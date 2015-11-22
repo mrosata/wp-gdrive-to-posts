@@ -167,7 +167,8 @@ class GDrive_To_Posts_Settings {
 
         <input name="gdrive_to_posts_settings[key_file_location]" type="hidden" value="gdrive-file-key.p12">
         <label for="file-gdrive-to-posts-key">
-        <span class="gdrive-btn-file"><?php _e(' Upload File ', 'gdrive_to_posts') ?>
+        <span class="gdrive-btn gdrive-btn-file"><?php _e(' Upload File ', 'gdrive_to_posts') ?>
+
         <input name="file-gdrive-to-posts-key" type="file" value="">
         </span>
         </label>
@@ -296,16 +297,22 @@ class GDrive_To_Posts_Settings {
             <?php $this->create_each_templates_individual_settings() ?>
         </div>
 
-        <div class="gdrive-template-delete">
-            <button class="button button-danger" type="delete" id="gdrive-delete-template"><?php _e('DELETE THIS TEMPLATE') ?></button>
-        </div>
-        <hr>
-
         <?php
 
         // These hidden inputs hold the values of each template so we can pull their value into the mce editor if the user wants
         // to edit the template body and then when the 'save changes' button is pushed they will all update.
         echo "<div id='gdrive-hidden-templates'>{$hidden_inputs}</div>";
+    }
+
+
+    public function delete_template_button () {
+        ?>
+
+        <div class="gdrive-template-delete">
+            <button class="gdrive-btn gdrive-btn-delete" type="delete" id="gdrive-delete-template" style="display:none"><?php _e('DELETE THIS TEMPLATE') ?></button>
+        </div>
+
+        <?php
     }
 
 
@@ -331,19 +338,32 @@ class GDrive_To_Posts_Settings {
             ob_start();
             ob_flush();
             ?>
-            <div class="template-field-container template-<?php echo $label ?>" style="display:none">
-
+            <div class="container-fluid template-field-container template-<?php echo $label ?>" style="display:none">
+        <div class="row">
+        <div class="col-xs-12 col-sm-10 col-md-6 col-lg-4">
+                <?php
+                $this->build_template_post_status($label);
+                $this->build_template_sheet_id( $label );
+                $this->build_template_data_field( $label );
+                $this->build_template_csv_last_line( $label );
+                $this->build_template_urls_to_links( $label );
+                ?>
+                </div>
+                </div>
+                <div class="row">
+                <div class="col-xs-12 col-sm-10 col-md-6 col-lg-4">
+                <?php
+                $this->build_template_title_input( $label );
+                $this->build_template_category_dropdown( $label );
+                $this->build_template_author_select( $label );
+                $this->build_template_tags_input( $label );
+                ?>
+                </div>
+                </div>
+                </div> <!--  end the .template-field-container -->
             <?php
-            $this->build_template_sheet_id( $label );
-            $this->build_template_csv_last_line( $label );
-            $this->build_template_data_field( $label );
-            $this->build_template_category_dropdown( $label );
-            $this->build_template_author_select( $label );
-            $this->build_template_tags_input( $label );
-            $this->build_template_title_input( $label );
-            ?>
 
-            </div><?php
+
 
             $html_output = ob_get_contents();
             ob_end_clean();
@@ -368,21 +388,23 @@ class GDrive_To_Posts_Settings {
 
         <div class="container-fluid template-field-container template-<?php echo $label ?>" style="display:none">
         <div class="row">
-        <div class="col-xs-8 col-sm-6 col-md-4 col-lg-3">
+        <div class="col-xs-12 col-sm-10 col-md-6 col-lg-4">
                 <?php
+                $this->build_template_post_status( $label );
                 $this->build_template_sheet_id( $label );
-                $this->build_template_csv_last_line( $label );
                 $this->build_template_data_field( $label );
+                $this->build_template_csv_last_line( $label );
+                $this->build_template_urls_to_links( $label );
                 ?>
                 </div>
                 </div>
                 <div class="row">
-                <div class="col-xs-8 col-sm-6 col-md-4 col-lg-3">
+                <div class="col-xs-12 col-sm-10 col-md-6 col-lg-4">
                 <?php
+                $this->build_template_title_input( $label );
                 $this->build_template_category_dropdown( $label );
                 $this->build_template_author_select( $label );
                 $this->build_template_tags_input( $label );
-                $this->build_template_title_input( $label );
                 ?>
                 </div>
                 </div>
@@ -392,6 +414,40 @@ class GDrive_To_Posts_Settings {
         }
     }
 
+    function build_template_post_status( $label ) {
+
+        $options = get_option('gdrive_to_posts_template_post_status');
+
+        if (is_array($options)) {
+            $val = isset($options[ $label ]) ? $options[ $label ] : '';
+            ?>
+            <div class="template-post_status gdrive-option">
+                <b><?php _e("Use Post Status: ", 'gdrive_to_posts') ?></b><br>
+                <label for="template-post_status-<?php echo $label ?>"><b><?php _e("Don't Post: ", 'gdrive_to_posts') ?></b>
+                    <input type="radio" value=""
+                           name="gdrive_to_posts_template_post_status[<?php echo $label ?>]" <?php checked('', $val) ?>>
+                </label>
+
+                <label for="template-post_status-<?php echo $label ?>"><b><?php _e("Draft: ", 'gdrive_to_posts') ?></b>
+                    <input type="radio" value="draft"
+                           name="gdrive_to_posts_template_post_status[<?php echo $label ?>]" <?php checked('draft', $val) ?>>
+                </label>
+
+                <label for="template-post_status-<?php echo $label ?>"><b><?php _e("Publish: ", 'gdrive_to_posts') ?></b>
+                    <input type="radio" value="publish"
+                           name="gdrive_to_posts_template_post_status[<?php echo $label ?>]" <?php checked('publish', $val) ?>>
+                </label>
+
+                <label for="template-post_status-<?php echo $label ?>"><b><?php _e("Private: ", 'gdrive_to_posts') ?></b>
+                    <input type="radio" value="private"
+                           name="gdrive_to_posts_template_post_status[<?php echo $label ?>]" <?php checked('private', $val) ?>>
+                </label>
+            </div>
+            <?php
+        }
+
+    }
+
     function build_template_sheet_id( $label ) {
 
         $options = get_option('gdrive_to_posts_template_sheet_id', array());
@@ -399,8 +455,8 @@ class GDrive_To_Posts_Settings {
         if (is_array($options)) {
             $val = $options[ $label ];
             ?>
-            <div class="template-sheet_id">
-                <label for="template-sheet_id<?php echo $label ?>"><?php _e('Sheet ID: ', 'gdrive_to_posts') ?>
+            <div class="template-sheet_id gdrive-option">
+                <label for="template-sheet_id<?php echo $label ?>"><b><?php _e('Sheet ID: ', 'gdrive_to_posts') ?></b>
                     <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_sheet_id[<?php echo $label ?>]"
                                   name="gdrive_to_posts_template_sheet_id[<?php echo $label ?>]">
                 </label>
@@ -418,8 +474,8 @@ class GDrive_To_Posts_Settings {
         if (is_array($options)) {
             $val = $options[ $label ];
             ?>
-            <div class="template-csv_last_line">
-                <label for="template-csv_last_line-<?php echo $label ?>"><?php _e('Last Line Read: ', 'gdrive_to_posts') ?>
+            <div class="template-csv_last_line gdrive-option">
+                <label for="template-csv_last_line-<?php echo $label ?>"><b><?php _e('Last Line Read: ', 'gdrive_to_posts') ?></b>
                     <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_csv_last_line[<?php echo $label ?>]"
                                   name="gdrive_to_posts_template_csv_last_line[<?php echo $label ?>]">
                 </label>
@@ -429,6 +485,32 @@ class GDrive_To_Posts_Settings {
 
     }
 
+
+    function build_template_urls_to_links( $label ) {
+
+        $options = get_option('gdrive_to_posts_template_url_to_links', array());
+
+        if (is_array($options)) {
+            $val = $options[ $label ];
+            ?>
+            <div class="template-urls_as_links gdrive-option">
+                <b><?php _e("Turn URL's in text to links in post: ", 'gdrive_to_posts') ?></b>
+                <label for="template-data-<?php echo $label ?>">Yes
+                    <input type="radio" value="1"
+                           id="gdrive_to_posts_template_url_to_links[<?php echo $label ?>]"
+                           name="gdrive_to_posts_template_url_to_links[<?php echo $label ?>]" <?php checked(1, intval($val), true) ?>>
+                </label>
+                <label for="template-data-<?php echo $label ?>">No
+
+                    <input type="radio" value="0"
+                           id="gdrive_to_posts_template_url_to_links[<?php echo $label ?>]"
+                           name="gdrive_to_posts_template_url_to_links[<?php echo $label ?>]" <?php checked(0, intval($val), true) ?>>
+                </label>
+            </div>
+            <?php
+        }
+
+    }
     /**
      * The `data` field is a checkbox which by default as 0 or '' will signal to the plugin that
      * the user wishes to use Google Credentials. By '1' it will signal that credentials are not
@@ -442,18 +524,19 @@ class GDrive_To_Posts_Settings {
             $val = $options[ $label ];
 
             ?>
-            <p>
-                <label for="template-data-<?php echo $label ?>">
-                    Access Sheet via Drive (requires fingerprint and Key file):
+            <div class="gdrive-option">
+                <b class="radio-input-label">Sheet ID is published URL (not recommended): </b><br>
+                <label for="template-data-<?php echo $label ?>">No
                     <input type="radio" value="0"
                            id="gdrive_to_posts_template_data[<?php echo $label ?>]"
                            name="gdrive_to_posts_template_data[<?php echo $label ?>]" <?php checked(0, intval($val), true) ?>>
                 </label>
-                <label for="template-data-<?php echo $label ?>">
-                    Access Sheet via URI (<span class="label-info">Click for information</span>):
+                <label for="template-data-<?php echo $label ?>"><span class="label-info">Yes</span>
                     <input type="radio" value="1"
                            id="gdrive_to_posts_template_data[<?php echo $label ?>]"
                            name="gdrive_to_posts_template_data[<?php echo $label ?>]" <?php checked(1, intval($val), true) ?>>
+
+                </label>
                     <span class="text-info" style="display:none">
                         If you don't have a Google Server fingerprint, email, and key file yet or you are
                         accessing a file that is not your own. Check this box and the plugin will treat
@@ -469,9 +552,7 @@ class GDrive_To_Posts_Settings {
                         for your template on this plugin.
                 </span>
 
-                </label>
-
-            </p>
+            </div>
             <?php
         }
 
@@ -485,9 +566,9 @@ class GDrive_To_Posts_Settings {
         if (is_array($options)) {
             $val = $options[ $label ];
             ?>
-            <div class="template-title">
-                <label for="template-title-<?php echo $label ?>">
-                    Title: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_title[<?php echo $label ?>]"
+            <div class="template-title gdrive-option">
+                <label for="template-title-<?php echo $label ?>"><b><?php _e('Title: ', 'gdrive_to_posts') ?></b>
+                    <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_title[<?php echo $label ?>]"
                                   name="gdrive_to_posts_template_title[<?php echo $label ?>]">
                 </label>
             </div>
@@ -515,9 +596,9 @@ class GDrive_To_Posts_Settings {
             $args['id'] = "gdrive_to_posts_template_author[{$label}]";
             ?>
 
-            <div class="template-author">
-                <label for="template-author-<?php echo $label ?>">
-                    Author: <?php wp_dropdown_users( $args ); ?>
+            <div class="template-author gdrive-option">
+                <label for="template-author-<?php echo $label ?>"><b><?php _e('Author: ', 'gdrive_to_posts') ?></b>
+                    <?php wp_dropdown_users( $args ); ?>
                 </label>
             </div>
             <?php
@@ -535,9 +616,9 @@ class GDrive_To_Posts_Settings {
 
             $args['selected'] = $val;
             ?>
-            <div class="template-tags>
-                <label for="gdrive_to_posts_template_tags[<?php echo $label ?>]">
-                    Tags: <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_tags[<?php echo $label ?>]"
+            <div class="template-tags gdrive-option">
+                <label for="gdrive_to_posts_template_tags[<?php echo $label ?>]"><b><?php _e('Tags: ', 'gdrive_to_posts') ?></b>
+                    <input type="text" value="<?php echo $val ?>" id="gdrive_to_posts_template_tags[<?php echo $label ?>]"
                                  name="gdrive_to_posts_template_tags[<?php echo $label ?>]">
                 </label>
             </div>
@@ -564,10 +645,9 @@ class GDrive_To_Posts_Settings {
             $args['name'] = "gdrive_to_posts_template_category[{$label}]";
             $args['id'] = "gdrive_to_posts_template_category[{$label}]";
             ?>
-            <div class="template-category>
-                <label for="<?php echo $args['name'] ?>">
+            <div class="template-category gdrive-option">
+                <label for="<?php echo $args['name'] ?>"><b><?php _e('Categories: ', 'gdrive_to_posts') ?></b>
                 <?php
-                _e('Categories:');
                 wp_dropdown_categories( $args );
                 ?>
                 </label>

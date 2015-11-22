@@ -157,7 +157,7 @@ class Gdrive_to_posts {
 		$this->plugin_admin = new Gdrive_to_posts_Admin( $this->get_plugin_name(), $this->get_version() );
 
 		$this->plugin_public = new Gdrive_to_posts_Public( $this->get_plugin_name(), $this->get_version() );
-
+		
 	}
 
 	/**

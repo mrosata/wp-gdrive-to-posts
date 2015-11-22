@@ -1041,7 +1041,11 @@ hr {
     border-color: #DEDEDE;
 }
 
-.gdrive-btn-file {
+.sm-padding {
+    padding: 0.25em;
+    padding: 0.25rem;
+}
+.gdrive-btn {
     display: inline-block;
     text-decoration: none;
     font-size: 13px;
@@ -1050,20 +1054,25 @@ hr {
     margin: 0;
     padding: 0 10px 1px;
     cursor: pointer;
-    -webkit-appearance: none;
-    -webkit-border-radius: 3px;
+    appearance: none;
     border-radius: 3px;
     white-space: nowrap;
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
     box-sizing: border-box;
     position: relative;
     overflow: hidden;
+}
+.gdrive-btn-file, .gdrive-btn-delete {
     background: #0091cd;
     border: 1px solid #0073aa;
-    -webkit-box-shadow: inset 0 1px 0 rgba(120,200,230,.6);
     box-shadow: inset 0 1px 0 rgba(120,200,230,.6);
     color: #fff;
+}
+.gdrive-btn-delete:hover {
+    background: #006ca2;
+    border-color: #006ca2;
+    -webkit-box-shadow: inset 0 1px 0 rgba(144, 230, 224, 0.6);
+    box-shadow: inset 0 1px 0 rgba(120,200,230,.6);
+    color: #fffbfb;
 }
 .gdrive-btn-file:hover {
     background: #006ca2;
@@ -1088,5 +1097,17 @@ hr {
     cursor: inherit;
     display: block;
 }
-input[type="file"][name="file-gdrive-to-posts-key"] {
+
+.gdrive-option {
+    margin-top: 0.7em;
+    padding: .2em;
+    border-bottom: 1px solid #cfcfcf;
+}
+
+
+@media (min-width: 1200px) {
+    .gdrive-option {
+        min-height: 3.75em;
+        min-height: 3.75rem;
+    }
 }
