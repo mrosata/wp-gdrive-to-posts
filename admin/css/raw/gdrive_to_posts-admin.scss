@@ -1,0 +1,39 @@
+/**
+ *  Google Drive to Posts Plugin
+ *    SASS files
+ *    -- Importing most of Bootstraps functionality. Not all of it.
+ *       WP Dashboard doesn't have bootstrap and I don't want to load
+ *       more than needed. At the bottom is the custom plugin CSS    
+ */
+// Minimal Bootstrap
+@import "bootstrap/variables";
+@import "bootstrap/mixins";
+@import "bootstrap/grid";
+@import "bootstrap/tables";
+@import "bootstrap/forms";
+@import "bootstrap/buttons";
+
+// Plugin custom
+@import "wp-gtp-partials/_my-modal";
+@import "wp-gtp-partials/_mobile";
+@import "wp-gtp-partials/_testing-features";
+@import "wp-gtp-partials/_sheet-fields";
+@import "wp-gtp-partials/_buttons";
+
+// Additional CSS
+hr {
+    border-color: #DEDEDE;
+}
+.sm-padding {
+    padding: 0.25em;
+    padding: 0.25rem;
+}
+.gdrive-option {
+    margin-top: 0.7em;
+    padding: .2em;
+    border-bottom: 1px solid #cfcfcf;
+}
+.gdrive-bold {
+    font-weight: bold;
+    font-size: 1.05em;
+}

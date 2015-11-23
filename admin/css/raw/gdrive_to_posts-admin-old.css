@@ -987,8 +987,6 @@ table th[class*="col-"] {
     left: 50%;
     transform: translateX(-50%);
 }
-
-
 .google-client-test-btn {
     display: none;
 }
@@ -997,7 +995,6 @@ table th[class*="col-"] {
     min-height: 2em;
     min-height: 2rem;
 }
-
 .gdrive-bold {
     font-weight: bold;
     font-size: 1.05em;
@@ -1024,7 +1021,6 @@ ul.gdrive-template-variables-list li {
 dt {
     text-decoration: underline;
 }
-
 .test-gclient-results {
     font-size: 1.1em;
 }
@@ -1040,7 +1036,6 @@ span.pass {
 hr {
     border-color: #DEDEDE;
 }
-
 .sm-padding {
     padding: 0.25em;
     padding: 0.25rem;
@@ -1081,7 +1076,6 @@ hr {
     box-shadow: inset 0 1px 0 rgba(120,200,230,.6);
     color: #fffbfb;
 }
-
 .gdrive-btn-file input[type=file] {
     position: absolute;
     top: 0;
@@ -1097,14 +1091,11 @@ hr {
     cursor: inherit;
     display: block;
 }
-
 .gdrive-option {
     margin-top: 0.7em;
     padding: .2em;
     border-bottom: 1px solid #cfcfcf;
 }
-
-
 @media (min-width: 1200px) {
     .gdrive-option {
         min-height: 3.75em;

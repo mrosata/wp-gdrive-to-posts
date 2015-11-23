@@ -349,8 +349,6 @@ class GDrive_To_Posts_Settings {
                 $this->build_template_urls_to_links( $label );
                 ?>
                 </div>
-                </div>
-                <div class="row">
                 <div class="col-xs-12 col-sm-10 col-md-6 col-lg-4">
                 <?php
                 $this->build_template_title_input( $label );
@@ -376,36 +374,45 @@ class GDrive_To_Posts_Settings {
      *  Goes through the individual templates and builds a <div> to hold all their individual options
      *  so that they are easier to hide/show, and so that when the user submits the options page form
      *  all their settings remain for each template.
+     *
+     *  This method builds all the options fields that are specific to one template
      */
     function create_each_templates_individual_settings() {
 
         // We can use the `csv_last_line` option to figure out each templates label, which is their options key
         $options = get_option('gdrive_to_posts_template_csv_last_line', array());
 
+        $column_seperator = "</div><div class='col-xs-12 col-sm-6 col-md-4'>";
+        // We will use this to loop through all fields needed for each template
+        $template_fields = array(
+            'post_status', 
+            'sheet_id', 
+            'data_field', 
+            'csv_last_line', 
+            'urls_to_links', 
+            'title_input', 
+            'category_dropdown', 
+            'author_select', 
+            'tags_input'
+        );
+
         if (is_array($options)) {
             foreach ($options as $label => $val) {
-                ?>
 
-        <div class="container-fluid template-field-container template-<?php echo $label ?>" style="display:none">
-        <div class="row">
-        <div class="col-xs-12 col-sm-10 col-md-6 col-lg-4">
-                <?php
-                $this->build_template_post_status( $label );
-                $this->build_template_sheet_id( $label );
-                $this->build_template_data_field( $label );
-                $this->build_template_csv_last_line( $label );
-                $this->build_template_urls_to_links( $label );
                 ?>
-                </div>
-                </div>
+                <div class="container-fluid template-field-container template-<?php echo $label ?>" style="display:none">
                 <div class="row">
-                <div class="col-xs-12 col-sm-10 col-md-6 col-lg-4">
+                <div class="col-xs-12 col-sm-6 col-md-4">
+                
                 <?php
-                $this->build_template_title_input( $label );
-                $this->build_template_category_dropdown( $label );
-                $this->build_template_author_select( $label );
-                $this->build_template_tags_input( $label );
+                foreach($template_fields as $field) {
+                    $template_field_method = "build_template_{$field}";
+                    // Create the field
+                    $this->$template_field_method( $label );
+                    echo $column_seperator;
+                }
                 ?>
+                
                 </div>
                 </div>
                 </div> <!--  end the .template-field-container -->

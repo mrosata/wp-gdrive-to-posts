@@ -1,0 +1,21 @@
+/**
+ * These are the testing buttons in the admin settings page along with the color of text when
+ * a test either passes or fails. (When the user test GDrive connection).
+ */
+
+.google-client-test-btn {
+    display: none;
+}
+.test-gclient-results {
+    font-size: 1.1em;
+}
+.test-gclient-results span {
+    font-weight: bold;
+
+    &.fail {
+        color: #d02c21;
+    }
+    &.pass {
+        color: #3c763d;
+    }
+}

@@ -1,0 +1,22 @@
+/**
+ * This is the modal that appears with warning or success messages
+ * Fired through JavaScript, it doesn't use Bootsrap modal because I 
+ * created it before adding in Bootstrap.
+ */
+.gdrive-to-posts-settings input[type="text"], .gdrive-to-posts-settings select {
+    width: 100%;
+}
+.gdrive-to-posts-modal {
+    box-sizing: border-box;
+    background-color: #FAEBD7;
+    border-radius: 0.3em;
+    border-radius: 0.3rem;
+    z-index: 2000;
+    position: fixed;
+    padding: 1.7em;
+    text-align: center;
+    display: none;
+    top: 37.5%;
+    left: 50%;
+    transform: translateX(-50%);
+}
