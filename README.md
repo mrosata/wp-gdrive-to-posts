@@ -19,10 +19,10 @@ Great, if you need more information on running the plugin check out this [video 
 Development
 ----------
 If your interested in development then here is the current state of dev.
->- Run `gulp` to have gulp watch for .scss files in the `admin/css/raw` folder. Any `.scss` file in that folder will compile to  the folder below `admin/css/`, gulp will watch for `admin/css/raw/wp-gtp-partials/*.scss` files as well so you can add any style modules there.
+- Run `gulp` to have gulp watch for .scss files in the `admin/css/raw` folder. Any `.scss` file in that folder will compile to  the folder below `admin/css/`, gulp will watch for `admin/css/raw/wp-gtp-partials/*.scss` files as well so you can add any style modules there.
 >- The default `gulp` also transpiles ES2015 to ES5 using babel. It watches for files ending in `-es6.js` in the folder `admin/js/` and transpiles to a file with the same name minus the suffix `-es6.js`. This means that you can write new JavaScript code inside `admin/js/gdrive_to_posts-admin-es6.js` and it will transpile to `admin/js/gdrive_to_posts-admin.js` which is loaded by WP. (*As a note, I used ES2015 for my own reasons in this project. At the moment there is no feature detection being done, every browser will be served ES5 compliant code regardless of compatibility. This is on the todo for after production*).
->- `admin/partials/gdrive_to_posts-admin-display.php` creates the layout for the settings page.
->- `admin/gdrive_to_posts-admin.php` handles most of the logic behind the options page as well as handling the first level of most hooks. So when the hook for a chron job is fired, it will run through this file first to collect information about settings and then it delegates tasks such as <i class="icon-provider-gdrive"></i> **Google Client and Drive API** connection to `includes/class-gdrive_to_posts-google-client-handler.php` and delegates <i class="icon-upload"></i> **post creation and template building** off to `includes/class-gdrive_to_posts-google-client-workhorse.php`
+- `admin/partials/gdrive_to_posts-admin-display.php` creates the layout for the settings page.
+- `admin/gdrive_to_posts-admin.php` handles most of the logic behind the options page as well as handling the first level of most hooks. So when the hook for a chron job is fired, it will run through this file first to collect information about settings and then it delegates tasks such as <i class="icon-provider-gdrive"></i> **Google Client and Drive API** connection to `includes/class-gdrive_to_posts-google-client-handler.php` and delegates <i class="icon-upload"></i> **post creation and template building** off to `includes/class-gdrive_to_posts-google-client-workhorse.php`
 
 
 ---
