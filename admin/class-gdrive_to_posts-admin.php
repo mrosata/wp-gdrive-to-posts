@@ -37,10 +37,11 @@ class Gdrive_to_posts_Admin {
 		0 => 'drive',
 		1 => 'uri'
 	);
-	private $gdrive;
-	private $gclient;
+
+
 	private $settings_for_templates = array(
 			'data' => 0,
+            'schedule' => '',
 			'url_to_links' => 1,
 			'category' => 0,
 			'tags' => '',
@@ -50,6 +51,7 @@ class Gdrive_to_posts_Admin {
 			'title' => '',
 		    'post_status' => '',
 			'body' => '',
+			'featured_image' => ''
 	);
 
 
@@ -511,50 +513,31 @@ class Gdrive_to_posts_Admin {
 
 		// TODO: This is done 2 times, create a function to pull out these options. Or have the function that consumes them do it
         $sheet_label = esc_attr($_POST['sheet_label']);
-        $post_status_opts = get_option('gdrive_to_posts_template_post_status' );
-        $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
-        $stored_templates = get_option('gdrive_to_posts_template_body' );
-        $title_templates = get_option('gdrive_to_posts_template_title' );
-        $author_templates = get_option('gdrive_to_posts_template_author' );
-        $tags_templates = get_option('gdrive_to_posts_template_tags' );
-        $category_templates = get_option('gdrive_to_posts_template_category' );
-        $stored_last_lines = get_option('gdrive_to_posts_template_csv_last_line' );
-		$stored_treat_as_uri_data = get_option('gdrive_to_posts_template_data' );
-		$urls_to_links = get_option('gdrive_to_posts_template_url_to_links' );
 
-
-        $sheet_id = $options_sheet_id[$sheet_label];
-        $post_status = (string)$post_status_opts[$sheet_label];
-        if (!$post_status) {
+        $options = $this->get_options_for_template($sheet_label);
+        if (!$options['post_status']) {
             // If we're not going to publish/draft/private then no point
             $this->end_ajax();
         }
-        $template = $stored_templates[$sheet_label];
-        $title_template = $title_templates[$sheet_label];
-        $author = $author_templates[$sheet_label];
-        $tags = $tags_templates[$sheet_label];
-        $category = $category_templates[$sheet_label];
-        $last_line = intval($stored_last_lines[$sheet_label]);
-		$treat_as_uri = isset($stored_treat_as_uri_data[$sheet_label]) ? boolval($stored_treat_as_uri_data[$sheet_label]) : false;
-		$link_urls = isset($urls_to_links[$sheet_label]) ? boolval($urls_to_links[$sheet_label]) : true;
 
-        if ( !is_string($sheet_id) || !is_string($template) || !is_string($title_template) || !$last_line) {
-            $resp['error'] = "Sheet ID {$sheet_id} doesn't work!";
+        if ( !is_string($options['sheet_id']) || !is_string($options['content_template']) || !$options['stored_last_line']) {
+            if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
+                $resp['error'] = "Sheet ID {$options['sheet_id']} doesn't work!";
+            }
             $this->end_ajax();
         }
 
 		// Get the connection or the explicit option to not use GDrive connection.
-		if (!$treat_as_uri) {
+		if (!$options['treat_as_uri']) {
 			// Need the google drive connection.
 			$gdrive = $this->gdrive_connection();
 		} else {
 			$gdrive = 'treat_as_uri';
 		}
 
-
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
-        if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $post_status, $template, $title_template, $author, $tags, $category, $link_urls, $last_line, 5)) {
+        if ($output = $workhorse->parse_file($gdrive, $options, 5)) {
             // We want to see the output here.
             $this->end_ajax(array('success'=>1, 'output'=>$output));
         }
@@ -569,40 +552,34 @@ class Gdrive_to_posts_Admin {
     }
 
 
-    public function check_for_new_posts() {
+    /**
+     * The function which runs during chron jobs to update any new posts
+     * that appear in setup templates by cheking their Google Sheets
+     *
+     * @param null $specific_templates
+     * @throws \Exception
+     */
+    public function check_for_new_posts($specific_templates=null) {
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
 
-		// TODO: This is done 2 times, create a function to pull out these options. Or have the function that consumes them do it
         $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
-        $post_status_opts = get_option( 'gdrive_to_posts_template_post_status' );
-        $bodies = get_option('gdrive_to_posts_template_body' );
-        $titles = get_option('gdrive_to_posts_template_title' );
-        $authors = get_option('gdrive_to_posts_template_author' );
-        $tags = get_option('gdrive_to_posts_template_tags' );
-        $categories = get_option('gdrive_to_posts_template_category' );
-        $last_lines = get_option('gdrive_to_posts_template_csv_last_line' );
-		$stored_treat_as_uri_data = get_option('gdrive_to_posts_template_data' );
-		$urls_to_links = get_option('gdrive_to_posts_template_url_to_links' );
-
         $sheet_labels = array_keys($options_sheet_id);
 
+        // If passed in list of labels then only parse those, making sure they exist by doing an intersect.
+        if (is_array($specific_templates)) {
+            $sheet_labels = array_intersect($specific_templates, $sheet_labels);
+        }
+
         foreach($sheet_labels as $sheet_label) {
-            $sheet_label = esc_attr($sheet_label);
-            $post_status = (string)$post_status_opts[$sheet_label];
-            if ($post_status == '') {
+            $options = $this->get_options_for_template($sheet_label);
+
+            if ($options['post_status'] == '' || $options['active_schedule'] == '') {
                 // If we're not going to publish/draft/private then no point
                 continue;
             }
-            $author = intval($authors[$sheet_label]);
-            $the_tags = $tags[$sheet_label];
-            $category = $categories[$sheet_label];
-            $last_line = intval($last_lines[$sheet_label]);
-            $sheet_id = $options_sheet_id[$sheet_label];
-            $template = $bodies[$sheet_label];
-            $title_template = $titles[$sheet_label];
+
 			$treat_as_uri = isset($stored_treat_as_uri_data[$sheet_label]) ? boolval($stored_treat_as_uri_data[$sheet_label]) : false;
-			$link_urls = isset($urls_to_links[$sheet_label]) ? boolval($urls_to_links[$sheet_label]) : true;
 
 			// We have to get connection on sheet to sheet basis.
 			if (!$treat_as_uri) {
@@ -613,24 +590,60 @@ class Gdrive_to_posts_Admin {
 			}
 
 
-            if (!$last_line || !is_string($sheet_id) || !is_string($template) || !is_string($title_template)) {
+            if (!$options['stored_last_line'] || !$options['sheet_id'] || !is_string($options['content_template'])) {
 
                 if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
                     $time = date('Y-m-d H:i:S');
-                    error_log("Was unable to check sheet_id $sheet_id at {$time}");
+                    error_log("Was unable to check sheet_id {$options['sheet_id']} at {$time}");
                 }
                 continue;
             }
 
-            if ($output = $workhorse->parse_file($gdrive, $sheet_label, $sheet_id, $post_status, $template, $title_template, $author, $the_tags, $category, $link_urls, $last_line)) {
-                // We want to see the output here.
-                if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
-                    echo $output;
-                }
-            }
 
+            $workhorse->parse_file($gdrive, $options);
         }
 
+    }
+
+
+    /**
+     * Gets and prepares all the options for a single template.
+     *
+     * @param $sheet_label
+     * @return array
+     */
+    private function get_options_for_template($sheet_label){
+
+        $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
+        $post_status_opts = get_option( 'gdrive_to_posts_template_post_status' );
+        $bodies = get_option('gdrive_to_posts_template_body' );
+        $titles = get_option('gdrive_to_posts_template_title' );
+        $authors = get_option('gdrive_to_posts_template_author' );
+        $tags = get_option('gdrive_to_posts_template_tags' );
+        $categories = get_option('gdrive_to_posts_template_category' );
+        $last_lines = get_option('gdrive_to_posts_template_csv_last_line' );
+        $templates_as_uris = get_option('gdrive_to_posts_template_data' );
+        $urls_to_links = get_option('gdrive_to_posts_template_url_to_links' );
+        $template_images = get_option('gdrive_to_posts_template_featured_image');
+        $template_schedules = get_option('gdrive_to_posts_template_schedule');
+
+
+        $options = array();
+        $options['sheet_label'] = $sheet_label;
+        $options['active_schedule'] = (string)$template_schedules[$sheet_label];
+        $options['sheet_id'] = (string)$options_sheet_id[$sheet_label];
+        $options['post_status'] = (string)$post_status_opts[$sheet_label];
+        $options['content_template'] = (string)$bodies[$sheet_label];
+        $options['title_template'] = (string)$titles[$sheet_label];
+        $options['author'] = intval($authors[$sheet_label]);
+        $options['the_tags'] = $tags[$sheet_label];
+        $options['category'] = $categories[$sheet_label];
+        $options['urls_to_links'] = isset($urls_to_links[$sheet_label]) ? boolval($urls_to_links[$sheet_label]) : true;
+        $options['featured_image'] = isset($template_images[$sheet_label]) ? $template_images[$sheet_label] : '';
+        $options['stored_last_line'] = intval($last_lines[$sheet_label]);
+        $options['treat_as_uri'] = isset($templates_as_uris[$sheet_label]) ? $templates_as_uris[$sheet_label] : '';
+
+        return $options;
     }
 
 

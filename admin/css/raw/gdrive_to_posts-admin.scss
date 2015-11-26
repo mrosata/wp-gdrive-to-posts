@@ -24,16 +24,14 @@
 hr {
     border-color: #DEDEDE;
 }
-.sm-padding {
-    padding: 0.25em;
-    padding: 0.25rem;
-}
+
 .gdrive-option {
+    box-sizing: border-box;
     margin-top: 0.7em;
-    padding: .2em;
     border-bottom: 1px solid #cfcfcf;
 }
 .gdrive-bold {
     font-weight: bold;
     font-size: 1.05em;
 }
+

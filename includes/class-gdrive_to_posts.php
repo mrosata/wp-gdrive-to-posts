@@ -145,6 +145,9 @@ class Gdrive_to_posts {
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/partials/gdrive_to_posts-admin-display.php';
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-gdrive_to_posts-admin.php';
+		// This is the class that will get featured images from a column
+		//TODO: Add in functionality to get the og:image tag from a page.
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-gdrive_to_posts-remote-featured-image.php';
 
 		/**
 		 * The class responsible for defining all actions that occur in the public-facing

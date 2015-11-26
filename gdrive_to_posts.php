@@ -86,7 +86,7 @@ function run_gdrive_to_posts() {
  */
 function set_option_if_not_set( $option_namespace, $option_key, $option_default = '' ) {
 
-	if (!($options = get_option( $option_namespace, array()) )) {
+	if (!($options = get_option( $option_namespace ) )) {
 		$options = array();
 	}
 	if (isset($options[$option_key]) && !empty($options[$option_key])) {

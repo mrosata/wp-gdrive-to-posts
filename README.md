@@ -3,6 +3,9 @@ WP GDrive to Posts Plugin
 
 This WP plugin will create posts using Spreadsheets stored on your Google Drive and then automatically check to see if new rows have been added to create posts from them as well. The plugin will check at intervals set by the site admin. It works best coupled with a service such as IFTTT.com.
 
+**Updates 11-25-2015**
+- Added the ability to template in featured images or use a column variable to hold the place of a future featured image. When a sheet is updated and WP GDrive to Posts converts the new rows into posts it will also check if there should be a featured image and provided the featured image is a remote url the plugin will grab it and attach it to your post.
+- Next I'd like to add captions. Note that if your spreadsheet uses the `IMAGE=(<image>, 1)` syntax to show images you will have to remove the `IMAGE=(` and `, 1` from your spreadsheet before it is parsed. The image column must resolve to a url, raw images won't be made accessible in a .csv which is what we use as the format to parse sheets at the moment.
 
 The first row of your Spreadsheet shall act as a header for the rest of the file. Whatever terms you place in the top row of the Sheet can be used as variables in the templated body, title and tags of your posts. A column named `address` would be reference in the template as `{!!ADDRESS!!}` or `{!!address!!}`. This way you have fine control over how your posts get created in the present as well as the future. You can change the top row of the spreadsheet and it will not effect future posts. Use the `Fetch Fields` button on the options page to see if your fields are working and how to use them inside the body, title or tags of your post.
 
