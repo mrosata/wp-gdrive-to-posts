@@ -109,4 +109,72 @@ function all_set($array, $fields) {
 	}
 	return true;
 }
+
+
+
+class Debug_abug {
+
+	static $max_logs = 15;
+
+	/**
+	 * Store debug messages as an option so that we can view them visually in the options
+	 * page. This should only run if GDRIVE_TO_POSTS_DEBUG is set to true.
+	 *
+	 * @param string $message - Message to be logged into the debugger
+	 * @param mixed $return_value -
+	 * @return bool
+	 */
+	static function log($message, $return_value=true) {
+		if (!defined('GDRIVE_TO_POSTS_DEBUG') || !GDRIVE_TO_POSTS_DEBUG) {
+			return $return_value;
+		}
+		$debug_info = get_option('gdrive_to_posts-debugger');
+		$debug_info = is_array($debug_info) ? $debug_info : array();
+		$bug_logged_on = date('Y-m-d H:i:s');
+		$debug_info[] =  "{$bug_logged_on}: {$message}";
+		// We'll only log up to ten bugs
+		while (count($debug_info) > Debug_abug::$max_logs) {
+			array_shift($debug_info);
+		}
+		update_option('gdrive_to_posts-debugger', $debug_info);
+
+		return $return_value;
+	}
+
+
+	/**
+	 * Get the markup to display the Debug-A-Bug console.
+	 *
+	 * @param bool|true $echo
+	 *
+	 * @return string
+	 */
+	static function console($echo=true) {
+		if (!defined('GDRIVE_TO_POSTS_DEBUG') || !GDRIVE_TO_POSTS_DEBUG) {
+			return '';
+		}
+
+		$debug_info = get_option('gdrive_to_posts-debugger');
+		$debug_info_log = '';
+		if (is_array($debug_info)) {
+			foreach ($debug_info as $log_item) {
+				$debug_info_log .= "<code>$log_item</code><br>\n";
+			}
+		}
+		$debug_console = <<<DOCSTRING
+		<section class="gdrive-to-posts-options_debugger">
+            <div id="gdrive-to-posts_debugger-console">
+                $debug_info_log
+			</div>
+		</section>
+DOCSTRING;
+
+		if ($echo) {
+			echo $debug_console;
+		}
+		return $debug_console;
+	}
+
+}
+
 run_gdrive_to_posts();

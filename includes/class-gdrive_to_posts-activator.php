@@ -35,9 +35,9 @@ class Gdrive_to_posts_Activator {
 	 */
 	public static function activate() {
 		$today_12_am = strtotime(date('Y-m-d'));
-		wp_schedule_event($today_12_am, 'hourly', 'gdrive_to_posts_hourly_hook');
-		wp_schedule_event($today_12_am, 'twicedaily', 'gdrive_to_posts_twicedaily_hook');
-		wp_schedule_event($today_12_am, 'daily', 'gdrive_to_posts_daily_hook');
+		wp_schedule_event($today_12_am, 'hourly', 'gdrive_to_posts_hourly_hook', array('hourly'));
+		wp_schedule_event($today_12_am, 'twicedaily', 'gdrive_to_posts_twicedaily_hook', array('twicedaily'));
+		wp_schedule_event($today_12_am, 'daily', 'gdrive_to_posts_daily_hook', array('daily'));
 	}
 
 }

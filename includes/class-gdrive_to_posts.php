@@ -239,37 +239,21 @@ class Gdrive_to_posts {
 
     /**
      * Sets up the hooks to handle the chron jobs
+	 *
+	 * This used to use a switch statement to ensure that only the single user selected chron job was run
+	 * and now if works a little differently, every single chron job is executed and the 'check_for_new_posts'
+	 * method should figure out on its own which sheets should be checked at which times. This will allow the user
+	 * a more fine grained control over their sheets.
      */
     private function define_chron_jobs() {
+		$this->loader->add_action( 'gdrive_to_posts_hourly_hook', $this->plugin_admin, 'check_for_new_posts', 20, 1 );
+		$this->loader->add_action( 'gdrive_to_posts_twicedaily_hook', $this->plugin_admin, 'check_for_new_posts', 20, 1 );
+		$this->loader->add_action( 'gdrive_to_posts_daily_hook', $this->plugin_admin, 'check_for_new_posts', 20, 1 );
+		$this->loader->add_action( 'gdrive_to_posts_often_hook', $this->plugin_admin, 'check_for_new_posts', 20, 1 );
 
-		// TODO: Need to move the GDrive functionality out of admin object so that public plugin can share an object with admin and we won't have to be using the admin object here in the define public hooks section.
-		// Setup the timing functions.
-		$timing_options = get_option('gdrive_to_posts_settings');
-
-		if (is_array($timing_options) && isset($timing_options['fetch_interval'])) {
-			// TODO: Maybe in the future the update interval should be template based not account based?
-
-			switch($timing_options['fetch_interval']) {
-				case 'hourly':
-					$this->loader->add_action( 'gdrive_to_posts_hourly_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
-					break;
-				case 'twicedaily':
-					$this->loader->add_action( 'gdrive_to_posts_twicedaily_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
-                    break;
-				case 'daily':
-					$this->loader->add_action( 'gdrive_to_posts_daily_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
-                    break;
-				case 'often':
-					// Check if it is already schedualed
-					if (!($next_event = wp_next_scheduled( 'gdrive_to_posts_often_hook'))) {
-						wp_schedule_single_event(strtotime('+ 1 minute'), 'gdrive_to_posts_often_hook');
-					}
-
-					$this->loader->add_action( 'gdrive_to_posts_often_hook', $this->plugin_admin, 'check_for_new_posts', 20 );
-                    break;
-				default:
-					break;
-			}
+		// Check if it is already schedualed
+		if (!($next_event = wp_next_scheduled( 'gdrive_to_posts_often_hook'))) {
+			wp_schedule_single_event(strtotime('+ 1 minute'), 'gdrive_to_posts_often_hook', array('often'));
 		}
 
 	}

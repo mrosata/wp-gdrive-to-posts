@@ -51,9 +51,9 @@ class Gdrive_to_posts_Deactivator {
         wp_clear_scheduled_hook('gdrive_to_posts_hourly_hook');
         wp_clear_scheduled_hook('gdrive_to_posts_twicedaily_hook');
         wp_clear_scheduled_hook('gdrive_to_posts_daily_hook');
-        if ( ($timestamp = wp_next_scheduled( time(), 'gdrive_to_posts_daily_hook' )) ) {
+        if ( ($timestamp = wp_next_scheduled( time(), 'gdrive_to_posts_often_hook' )) ) {
             // Unschedule an often event if we can.
-            wp_unschedule_event( $timestamp, 'gdrive_to_posts_daily_hook' );
+            wp_unschedule_event( $timestamp, 'gdrive_to_posts_often_hook' );
         }
     }
 

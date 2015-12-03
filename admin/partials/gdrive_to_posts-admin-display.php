@@ -64,7 +64,10 @@ class GDrive_To_Posts_Settings {
         <div class="container">
         <div class="row">
         <div class="col-xs-12 col-sm-10 col-md-5 col-lg-4">
-        <input type='text' id='gdrive_to_posts_settings[google_api_key]' name='gdrive_to_posts_settings[google_api_key]' value='<?php echo $options['google_api_key']; ?>'>
+            <label for="gdrive_to_posts_settings[google_api_key]">
+        <input type='text' id='gdrive_to_posts_settings[google_api_key]' name='gdrive_to_posts_settings[google_api_key]'
+               value='<?php echo $options['google_api_key']; ?>'>
+            </label>
         </div>
         </div>
         </div>
@@ -117,34 +120,6 @@ class GDrive_To_Posts_Settings {
 
     }
 
-
-    public function fetch_interval_field(  ) {
-
-        $options = get_option( 'gdrive_to_posts_settings' );
-        if (!isset($options['fetch_interval'])) {
-            $options['fetch_interval'] = '';
-            update_option('gdrive_to_posts_settings', $options);
-        }
-        ?>
-
-        <div class="container">
-        <div class="row">
-        <div class="col-xs-6 col-sm-8 col-md-3 col-lg-2">
-
-        <select name='gdrive_to_posts_settings[fetch_interval]'>
-            <option value='' <?php selected( $options['fetch_interval']); ?>><?php _e('Choose Approximate Interval', 'gdrive_to_posts') ?></option>
-            <option value='often' <?php selected( $options['fetch_interval'], 'often' ); ?>><?php _e('About 10 Minutes', 'gdrive_to_posts') ?></option>
-            <option value='hourly' <?php selected( $options['fetch_interval'], 'hourly'); ?>><?php _e('Hourly', 'gdrive_to_posts') ?></option>
-            <option value='twicedaily' <?php selected( $options['fetch_interval'], 'twicedaily'); ?>><?php _e('Noon and midnight', 'gdrive_to_posts') ?></option>
-            <option value='daily' <?php selected( $options['fetch_interval'], 'daily'); ?>><?php _e('Daily at midnight', 'gdrive_to_posts') ?></option>
-        </select>
-
-        </div>
-        </div>
-        </div>
-        <?php
-
-    }
 
 
     /**
@@ -696,9 +671,9 @@ class GDrive_To_Posts_Settings {
         $args = array(
             'show_option_none' => __( 'Select category' ),
             'hierarchical'     => 1,
-            'hide_empty'         => 0,
+            'hide_empty'       => 0,
             'orderby'          => 'name',
-            'hide_if_empty'      => false,
+            'hide_if_empty'    => false,
             'echo'             => 1,
         );
 
@@ -712,9 +687,7 @@ class GDrive_To_Posts_Settings {
             ?>
             <div class="template-category gdrive-option">
                 <label for="<?php echo $args['name'] ?>"><b><?php _e('Categories: ', 'gdrive_to_posts') ?></b>
-                <?php
-                wp_dropdown_categories( $args );
-                ?>
+                <?php wp_dropdown_categories( $args ); ?>
                 </label>
             </div>
             <?php
@@ -735,6 +708,9 @@ class GDrive_To_Posts_Settings {
         </section>
 
         <section class="wrap">
+
+            <?php Debug_abug::console() ?>
+
             <div class="gdrive-to-posts-options">
                 <form action='options.php' method='post' class="gdrive-to-posts-settings">
                     <h2>Google Drive to Posts</h2>

@@ -134,14 +134,6 @@ class Gdrive_to_posts_Admin {
 		);
 
 		add_settings_field(
-				'fetch_interval',
-				__( 'Check for new posts every: ', 'gdrive_to_posts' ),
-				array( $this->settings_page, 'fetch_interval_field'),
-				$gdrive_api_option_group,
-				$gdrive_post_api_section
-		);
-
-		add_settings_field(
 				'key_file_location',
 				__( 'Key File P12  Location: (file extension ".p12")', 'gdrive_to_posts' ),
 				array( $this->settings_page, 'key_file_location_field'),
@@ -300,10 +292,7 @@ class Gdrive_to_posts_Admin {
         $options = get_option( 'gdrive_to_posts_settings', array() );
 
         if (!is_array($options) || !($gclient = new Google_Client_Handler($options)) ) {
-            if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
-                echo "Missing Google Drive Connection Settings";
-            }
-            return false;
+            return Debug_abug::log("Wasn't able to get the Google_Client_Handler", false);
         }
 
         $gdrive = $gclient->connect('drive');
@@ -556,30 +545,58 @@ class Gdrive_to_posts_Admin {
      * The function which runs during chron jobs to update any new posts
      * that appear in setup templates by cheking their Google Sheets
      *
-     * @param null $specific_templates
+     * @param string $chron_event_time
+     *
+     * @return bool
      * @throws \Exception
      */
-    public function check_for_new_posts($specific_templates=null) {
+    public function check_for_new_posts($chron_event_time = '') {
+        if (!$chron_event_time) {
+            return Debug_abug::log("No chron event information passed into check_for_new_posts.");
+        }
+        Debug_abug::log("Checking chron event $chron_event_time; function called successfully.");
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
 
+
         $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
-        $sheet_labels = array_keys($options_sheet_id);
+		$all_sheet_labels = array_keys($options_sheet_id);
 
         // If passed in list of labels then only parse those, making sure they exist by doing an intersect.
-        if (is_array($specific_templates)) {
-            $sheet_labels = array_intersect($specific_templates, $sheet_labels);
-        }
+		if (!is_array(($template_schedules = get_option('gdrive_to_posts_template_schedule')))) {
+            Debug_abug::log("Tried to check for new posts but the 'gdrive_to_posts_template_schedule' option is not set proper.");
+			return false;
+		}
 
+		$sheet_labels = array();
+		// Figure out which sheets we can try to parse based on their schedule
+		foreach ($all_sheet_labels as $label) {
+			// Only add labels to the array that will be checked during this time interval.
+			if (isset($template_schedules[$label]) && $template_schedules[$label] == $chron_event_time) {
+				$sheet_labels[] = $label;
+			}
+		}
+
+
+        if (!count($sheet_labels)) {
+            return Debug_abug::log("There are no sheets to parse [chron event ran:{$chron_event_time}].");
+        }
+        $sheets = '';
+        foreach($sheet_labels as $sheet_label) {
+            $sheets .= "$sheet_label, ";
+        }
+        $sheets .= "are all set to be checked at $chron_event_time";
+        Debug_abug::log($sheets);
+        unset($sheets);
         foreach($sheet_labels as $sheet_label) {
             $options = $this->get_options_for_template($sheet_label);
 
-            if ($options['post_status'] == '' || $options['active_schedule'] == '') {
+            if ($options['post_status'] == '') {
                 // If we're not going to publish/draft/private then no point
                 continue;
             }
 
-			$treat_as_uri = isset($stored_treat_as_uri_data[$sheet_label]) ? boolval($stored_treat_as_uri_data[$sheet_label]) : false;
+			$treat_as_uri = isset($options['treat_as_uri']) ? boolval($options['treat_as_uri']) : false;
 
 			// We have to get connection on sheet to sheet basis.
 			if (!$treat_as_uri) {
@@ -592,14 +609,11 @@ class Gdrive_to_posts_Admin {
 
             if (!$options['stored_last_line'] || !$options['sheet_id'] || !is_string($options['content_template'])) {
 
-                if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
-                    $time = date('Y-m-d H:i:S');
-                    error_log("Was unable to check sheet_id {$options['sheet_id']} at {$time}");
-                }
+                Debug_abug::log("Was unable to check sheet_id {$options['sheet_id']} because missing information!");
                 continue;
             }
 
-
+            Debug_abug::log("About to check the sheet associated with template \"$sheet_label\"");
             $workhorse->parse_file($gdrive, $options);
         }
 
@@ -640,7 +654,7 @@ class Gdrive_to_posts_Admin {
         $options['category'] = $categories[$sheet_label];
         $options['urls_to_links'] = isset($urls_to_links[$sheet_label]) ? boolval($urls_to_links[$sheet_label]) : true;
         $options['featured_image'] = isset($template_images[$sheet_label]) ? $template_images[$sheet_label] : '';
-        $options['stored_last_line'] = intval($last_lines[$sheet_label]);
+        $options['stored_last_line'] = max(intval($last_lines[$sheet_label]), 1);
         $options['treat_as_uri'] = isset($templates_as_uris[$sheet_label]) ? $templates_as_uris[$sheet_label] : '';
 
         return $options;

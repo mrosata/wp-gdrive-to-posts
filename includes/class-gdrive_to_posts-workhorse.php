@@ -52,6 +52,7 @@ class GDrive_to_Posts_Workhorse
         try {
             $uri = '';
             if (is_a($gdrive, 'Google_Service_Drive')) {
+                Debug_abug::log("About to try to fetch sheet id: $sheet_id file using Google Service Drive");
                 // We will just use the $sheet_id as a file id to drive rather than plain URL.
                 $file = $gdrive->files->get($sheet_id);
 
@@ -61,6 +62,7 @@ class GDrive_to_Posts_Workhorse
             } elseif ( $gdrive == 'treat_as_uri' ) {
                 // just use sheet_id as URL. For published to web sheets or hosted .csv file's.
                 $uri = $sheet_id;
+                Debug_abug::log("About to try to find CSV using $sheet_id as a url.");
             }
 
             if (!!$uri) {
@@ -211,6 +213,8 @@ class GDrive_to_Posts_Workhorse
      * @throws \Exception
      */
     public function parse_file($gdrive, $options, $n_tests = 0 ) {
+        $successes = 0;
+        $failures = 0;
         // Parse Through the Options.
         $sheet_label = $options['sheet_label'];
         $sheet_id = $options['sheet_id'];
@@ -226,10 +230,7 @@ class GDrive_to_Posts_Workhorse
 
         // $gdrive is either \Google_Service_Drive or string == 'treat_as_uri'
         if (!$this->get($gdrive, $sheet_id)) {
-            if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
-                echo "returning because no sheet id / file";
-            }
-            return null;
+            return Debug_abug::log("returning because could not get file for template: $sheet_label", null);
         }
         $this->testing = (boolval($n_tests));
 
@@ -238,17 +239,16 @@ class GDrive_to_Posts_Workhorse
         // This separates everything correctly, google sheets uses \r for lines and " as enclosure
         $csv_rows = str_getcsv($csv_text, "\r", '"');
         if (!is_array($csv_rows)) {
-            return false;
+            return Debug_abug::log("Can't get array of rows from the CSV file for template: $sheet_label", false);
         }
 
 
         $all_last_lines = get_option('gdrive_to_posts_template_csv_last_line');
         if (!is_array($all_last_lines) || (!$this->testing && $all_last_lines[$sheet_label] != $stored_last_line)) {
             // Either we don't have last lines or we aren't testing and the last line passed doesn't match!
-            if (defined('GDRIVE_TO_POSTS_DEBUG') && GDRIVE_TO_POSTS_DEBUG) {
-                throw new \Exception("Bad information passed to Workhorse->parse_file");
-            }
-            return false;
+            $reason = $all_last_lines[$sheet_label] != $stored_last_line ? "Stored last line in template $sheet_label doesn't match line passed to parse_file. " : "";
+            $reason .= !is_array($all_last_lines) ? "No last lines stored in database." : "";
+            return Debug_abug::log($reason, false);
         }
 
         // Row 1 becomes our keys for every other row, needed for templating.
@@ -320,15 +320,19 @@ class GDrive_to_Posts_Workhorse
                         // COOL! A Post has been parsed and recorded where it was updated from updated!
                     }
                     $output .= "<br>Created new post at " . get_page_uri($post_insert_id);
+                    $successes++;
                 } else {
+                    $failures++;
                     $output .= "<br>Failed to create page {$row_number}...";
                 }
             } else {
                 $output .= "<br>Failed to parse a row {$row_number}...";
+                $failures++;
             }
 
         }
 
+        Debug_abug::log("Template $sheet_label created $successes new posts and $failures failures.");
         $this->testing = false;
         return $output;
     }
