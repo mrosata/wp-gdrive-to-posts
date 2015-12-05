@@ -232,7 +232,7 @@ class GDrive_to_Posts_Workhorse
         if (!$this->get($gdrive, $sheet_id)) {
             return Debug_abug::log("returning because could not get file for template: $sheet_label", null);
         }
-        $this->testing = (boolval($n_tests));
+        $this->testing = (!!($n_tests));
 
         // Alright, let's parse this sheet.
         $csv_text = $this->csv_text;

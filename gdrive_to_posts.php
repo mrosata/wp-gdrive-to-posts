@@ -3,7 +3,7 @@
 /**
  *
  * @link              http://mindbetweenthelines.com
- * @since             1.0.0
+ * @since             1.1.0
  * @package           Gdrive_to_posts
  *
  * @wordpress-plugin
@@ -13,7 +13,7 @@
  * 					  will be compared against settings in this app to check if they should become a post or not. This
  *                    means you could have 1 file with posts for multiple pages where some posts are shared on both
  *                    sites and some are not.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Author:            Michael Rosata
  * Author URI:        http://mindbetweenthelines.com
  * License:           GPL-2.0+
@@ -111,7 +111,14 @@ function all_set($array, $fields) {
 }
 
 
-
+/**
+ * This is a class that just logs debug messages for my gdrive_to_posts plugin and I plan
+ * to use it and extend it in upcomming projects. It's an easy way to store and view a 
+ * limited set of debug messages and provides method to print out those messages in html.
+ * 
+ * Class Debug_abug
+ * @package gdrive_to_posts
+ */
 class Debug_abug {
 
 	static $max_logs = 15;
@@ -121,7 +128,9 @@ class Debug_abug {
 	 * page. This should only run if GDRIVE_TO_POSTS_DEBUG is set to true.
 	 *
 	 * @param string $message - Message to be logged into the debugger
-	 * @param mixed $return_value -
+	 * @param mixed $return_value Pass in optional value to return, you could use the log
+	 *                            method in place of a value and have that same value 
+	 *                            returned back to the function which logs a debug message.
 	 * @return bool
 	 */
 	static function log($message, $return_value=true) {
@@ -132,12 +141,14 @@ class Debug_abug {
 		$debug_info = is_array($debug_info) ? $debug_info : array();
 		$bug_logged_on = date('Y-m-d H:i:s');
 		$debug_info[] =  "{$bug_logged_on}: {$message}";
-		// We'll only log up to ten bugs
+
 		while (count($debug_info) > Debug_abug::$max_logs) {
 			array_shift($debug_info);
 		}
-		update_option('gdrive_to_posts-debugger', $debug_info);
 
+		// Adding new log also has the effect of trimming the fat.
+		update_option('gdrive_to_posts-debugger', $debug_info);
+		
 		return $return_value;
 	}
 
@@ -151,16 +162,16 @@ class Debug_abug {
 	 */
 	static function console($echo=true) {
 		if (!defined('GDRIVE_TO_POSTS_DEBUG') || !GDRIVE_TO_POSTS_DEBUG) {
+			// return empty because debug is off.
 			return '';
 		}
 
-		$debug_info = get_option('gdrive_to_posts-debugger');
-		$debug_info_log = '';
-		if (is_array($debug_info)) {
-			foreach ($debug_info as $log_item) {
-				$debug_info_log .= "<code>$log_item</code><br>\n";
-			}
-		}
+		$debug_info = get_option('gdrive_to_posts-debugger', array());
+		// Return false because something is wrong if $debug info isn't array.
+		if (!is_array($debug_info)) return false;
+		
+		$debug_info_log = '<code>' . implode("</code><br>\n<code>", $debug_info). '</code>';
+
 		$debug_console = <<<DOCSTRING
 		<section class="gdrive-to-posts-options_debugger">
             <div id="gdrive-to-posts_debugger-console">

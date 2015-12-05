@@ -332,7 +332,7 @@ class Gdrive_to_posts_Admin {
 
 
 		$stored_treat_as_uri_data = get_option('gdrive_to_posts_template_data', array() );
-		$treat_as_uri = isset($stored_treat_as_uri_data[$sheet_label]) ? boolval($stored_treat_as_uri_data[$sheet_label]) : false;
+		$treat_as_uri = isset($stored_treat_as_uri_data[$sheet_label]) ? (!!($stored_treat_as_uri_data[$sheet_label])) : false;
 		if (!$treat_as_uri) {
 			// Need the google drive connection.
 			$gdrive = $this->gdrive_connection();
@@ -552,21 +552,20 @@ class Gdrive_to_posts_Admin {
      */
     public function check_for_new_posts($chron_event_time = '') {
         if (!$chron_event_time) {
-            return Debug_abug::log("No chron event information passed into check_for_new_posts.");
+            return Debug_abug::log("No chron event information passed into check_for_new_posts.", false);
         }
-        Debug_abug::log("Checking chron event $chron_event_time; function called successfully.");
+
         // This will parse the csv and make new posts if that's what it should do.
         $workhorse = new GDrive_to_Posts_Workhorse();
-
-
         $options_sheet_id = get_option('gdrive_to_posts_template_sheet_id' );
 		$all_sheet_labels = array_keys($options_sheet_id);
 
         // If passed in list of labels then only parse those, making sure they exist by doing an intersect.
 		if (!is_array(($template_schedules = get_option('gdrive_to_posts_template_schedule')))) {
-            Debug_abug::log("Tried to check for new posts but the 'gdrive_to_posts_template_schedule' option is not set proper.");
-			return false;
+            return Debug_abug::log(
+                "'gdrive_to_posts_template_schedule' option set incorrectly.", false);
 		}
+
 
 		$sheet_labels = array();
 		// Figure out which sheets we can try to parse based on their schedule
@@ -585,29 +584,31 @@ class Gdrive_to_posts_Admin {
         foreach($sheet_labels as $sheet_label) {
             $sheets .= "$sheet_label, ";
         }
-        $sheets .= "are all set to be checked at $chron_event_time";
+        $sheets .= "are all set to be checked during job interval \"$chron_event_time\"";
         Debug_abug::log($sheets);
-        unset($sheets);
         foreach($sheet_labels as $sheet_label) {
+            Debug_abug::log("Running initial loop on template $sheet_label");
             $options = $this->get_options_for_template($sheet_label);
 
             if ($options['post_status'] == '') {
                 // If we're not going to publish/draft/private then no point
+				Debug_abug::log("Post status not set on $sheet_label");
                 continue;
             }
 
-			$treat_as_uri = isset($options['treat_as_uri']) ? boolval($options['treat_as_uri']) : false;
+			$treat_as_uri = isset($options['treat_as_uri']) ? (!!($options['treat_as_uri'])) : false;
 
 			// We have to get connection on sheet to sheet basis.
 			if (!$treat_as_uri) {
+                Debug_abug::log("Attempting GDrive connection on template $sheet_label");
 				// Need the google drive connection.
 				$gdrive = $this->gdrive_connection();
 			} else {
+                Debug_abug::log("Ignoring GDrive connection, treat as URI, on template $sheet_label");
 				$gdrive = 'treat_as_uri';
 			}
 
-
-            if (!$options['stored_last_line'] || !$options['sheet_id'] || !is_string($options['content_template'])) {
+			if (!$options['stored_last_line'] || !$options['sheet_id'] || !is_string($options['content_template'])) {
 
                 Debug_abug::log("Was unable to check sheet_id {$options['sheet_id']} because missing information!");
                 continue;
@@ -652,7 +653,7 @@ class Gdrive_to_posts_Admin {
         $options['author'] = intval($authors[$sheet_label]);
         $options['the_tags'] = $tags[$sheet_label];
         $options['category'] = $categories[$sheet_label];
-        $options['urls_to_links'] = isset($urls_to_links[$sheet_label]) ? boolval($urls_to_links[$sheet_label]) : true;
+        $options['urls_to_links'] = isset($urls_to_links[$sheet_label]) ? !!($urls_to_links[$sheet_label]) : true;
         $options['featured_image'] = isset($template_images[$sheet_label]) ? $template_images[$sheet_label] : '';
         $options['stored_last_line'] = max(intval($last_lines[$sheet_label]), 1);
         $options['treat_as_uri'] = isset($templates_as_uris[$sheet_label]) ? $templates_as_uris[$sheet_label] : '';
