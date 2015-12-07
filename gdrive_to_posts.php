@@ -50,6 +50,7 @@ function deactivate_gdrive_to_posts() {
 	Gdrive_to_posts_Deactivator::deactivate();
 }
 
+
 register_activation_hook( __FILE__, 'activate_gdrive_to_posts' );
 register_deactivation_hook( __FILE__, 'deactivate_gdrive_to_posts' );
 
@@ -58,6 +59,7 @@ register_deactivation_hook( __FILE__, 'deactivate_gdrive_to_posts' );
  * admin-specific hooks, and public-facing site hooks.
  */
 require plugin_dir_path( __FILE__ ) . 'includes/class-gdrive_to_posts.php';
+
 
 /**
  * Begins execution of the plugin.
