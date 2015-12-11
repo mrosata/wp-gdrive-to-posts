@@ -388,7 +388,7 @@ class GDrive_To_Posts_Settings {
             foreach ($options as $label => $val) {
 
                 ?>
-                <div class="container template-field-container template-<?php echo $label ?>" style="display:none">
+                <div class="container-fluid template-field-container template-<?php echo $label ?>" style="display:none">
                 <div class="row">
                 <div class="col-xs-12 col-sm-6 col-md-4">
 

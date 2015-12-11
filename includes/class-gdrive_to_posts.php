@@ -119,7 +119,7 @@ class Gdrive_to_posts {
 		/**
 		 * Need to add the Google API Library to the include path.
 		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/google-api-php-client/src/Google/autoload.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/google-api-php-client-1.1.6/src/Google/autoload.php';
 		/**
 		 * The class used to parse the csv files returned from Google Drive
 		 */
