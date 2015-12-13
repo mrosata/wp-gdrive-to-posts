@@ -123,10 +123,14 @@ class Gdrive_to_posts {
 		 * The class used to parse the csv files returned from Google Drive
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-gdrive_to_posts-google-client-handler.php';
-		/**
-		 * The class used to parse the csv files returned from Google Drive
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-gdrive_to_posts-workhorse.php';
+        /**
+         * The class used to parse the csv files returned from Google Drive
+         */
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-gdrive_to_posts-workhorse.php';
+        /**
+         * The class used to do WP Plugin updating except using GitHub as the repo rather than WP Plugin Repo
+         */
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-gdrive_to_posts-updater.php';
 		/**
 		 * The class responsible for orchestrating the actions and filters of the
 		 * core plugin.
@@ -152,7 +156,12 @@ class Gdrive_to_posts {
 
 		$this->plugin_admin = new Gdrive_to_posts_Admin( $this->get_plugin_name(), $this->get_version() );
 
-	}
+
+        if ( is_admin() ) {
+            new GDrive_to_Posts_Updater( __GDRIVE_TO_POSTS_ROOT__, 'mrosata', "wp-gdrive-to-posts" );
+        }
+
+    }
 
 	/**
 	 * Define the locale for this plugin for internationalization.
@@ -197,17 +206,6 @@ class Gdrive_to_posts {
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_delete_template', $plugin_admin, 'delete_template' );
 
 		$this->loader->add_action( 'wp_ajax_gdrive_to_posts_key_file_upload', $plugin_admin, 'handle_upload_key_file' );
-
-
-
-
-		function do_on_my_plugin_settings_save()
-		{
-			if(isset($_GET['settings-updated']) && $_GET['settings-updated'])
-			{
-				//plugin settings have been saved. Here goes your code
-			}
-		}
 
 	}
 

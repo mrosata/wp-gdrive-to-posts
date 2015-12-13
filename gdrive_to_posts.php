@@ -31,7 +31,9 @@ if ( ! defined( 'WPINC' ) ) {
 if (!defined('GDRIVE_TO_POSTS_DEBUG')) {
 	define('GDRIVE_TO_POSTS_DEBUG', true);
 }
-
+if (!defined('__GDRIVE_TO_POSTS_DIR__')) {
+	define('__GDRIVE_TO_POSTS_ROOT__', __FILE__);
+}
 /**
  * The code that runs during plugin activation.
  * This action is documented in includes/class-gdrive_to_posts-activator.php
