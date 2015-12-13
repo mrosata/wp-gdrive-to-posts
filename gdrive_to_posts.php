@@ -32,7 +32,8 @@ if (!defined('GDRIVE_TO_POSTS_DEBUG')) {
 	define('GDRIVE_TO_POSTS_DEBUG', true);
 }
 if (!defined('__GDRIVE_TO_POSTS_DIR__')) {
-	define('__GDRIVE_TO_POSTS_ROOT__', __FILE__);
+	$root_plugin_file = __FILE__;
+	define('__GDRIVE_TO_POSTS_ROOT__', $root_plugin_file);
 }
 /**
  * The code that runs during plugin activation.

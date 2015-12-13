@@ -26,18 +26,22 @@ class GDrive_to_Posts_Updater {
         $this->username = $gitHubUsername;
         $this->repo = $gitHubProjectName;
         $this->accessToken = $accessToken;
+
+        Debug_abug::log("We are setting up updater.");
     }
 
     // Get information regarding our plugin from WordPress
     private function initPluginData() {
-        // code here
+        $this->slug = plugin_basename( $this->pluginFile );
+        $this->pluginData = get_plugin_data( $this->pluginFile );
+        return Debug_abug::log("(UPDATER)Initializing Plugin data for {$this->slug}.");
     }
 
     // Get information regarding our plugin from GitHub
     private function getRepoReleaseInfo() {
         // We only want to check the release info 1 time. But WP Calls this 2 times
         if (!empty($this->githubAPIResult)) {
-            return;
+            return Debug_abug::log("(UPDATER)Unable to get result from Github pertaining to release information.");
         }
         $url = "https://api.github.com/repos/{$this->username}/{$this->repo}/releases";
 
