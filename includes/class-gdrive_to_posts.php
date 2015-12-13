@@ -3,8 +3,8 @@
 /**
  * The file that defines the core plugin class
  *
- * A class definition that includes attributes and functions used across both the
- * public-facing side of the site and the admin area.
+ * A class definition that includes loading and routing all the attributes and
+ * functions for the entire plugin, including 3rd party loading.
  *
  * @link       http://mindbetweenthelines.com
  * @since      1.0.0
@@ -88,7 +88,6 @@ class Gdrive_to_posts {
 		$this->set_locale();
 
 		$this->define_admin_hooks();
-		$this->define_public_hooks();
 
         $this->define_chron_jobs();
 
@@ -149,18 +148,10 @@ class Gdrive_to_posts {
 		//TODO: Add in functionality to get the og:image tag from a page.
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-gdrive_to_posts-remote-featured-image.php';
 
-		/**
-		 * The class responsible for defining all actions that occur in the public-facing
-		 * side of the site.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-gdrive_to_posts-public.php';
-
 		$this->loader = new Gdrive_to_posts_Loader();
 
 		$this->plugin_admin = new Gdrive_to_posts_Admin( $this->get_plugin_name(), $this->get_version() );
 
-		$this->plugin_public = new Gdrive_to_posts_Public( $this->get_plugin_name(), $this->get_version() );
-		
 	}
 
 	/**
@@ -220,22 +211,6 @@ class Gdrive_to_posts {
 
 	}
 
-	/**
-	 * Register all of the hooks related to the public-facing functionality
-	 * of the plugin.
-	 *
-	 * @since    1.0.0
-	 * @access   private
-	 */
-	private function define_public_hooks()
-    {
-
-        $plugin_public = $this->plugin_public;
-
-        $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_styles');
-        $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_scripts');
-
-    }
 
     /**
      * Sets up the hooks to handle the chron jobs
